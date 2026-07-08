@@ -1,37 +1,16 @@
-#Capstone project
+# Capstone project
 
-@misc{zou2023universal,
-      title={Universal and Transferable Adversarial Attacks on Aligned Language Models}, 
-      author={Andy Zou and Zifan Wang and J. Zico Kolter and Matt Fredrikson},
-      year={2023},
-      eprint={2307.15043},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-https://github.com/llm-attacks/llm-attacks
+## Prompt injection
 
-@article{mazeika2024harmbench,
-  title={HarmBench: A Standardized Evaluation Framework for Automated Red Teaming and Robust Refusal},
-  author={Mantas Mazeika and Long Phan and Xuwang Yin and Andy Zou and Zifan Wang and Norman Mu and Elham Sakhaee and Nathaniel Li and Steven Basart and Bo Li and David Forsyth and Dan Hendrycks},
-  year={2024},
-  eprint={2402.04249},
-  archivePrefix={arXiv},
-  primaryClass={cs.LG}
-}
-https://github.com/centerforaisafety/HarmBench/tree/main
+El prompt injection es una vulnerabilidad en la que un atacante introduce instrucciones maliciosas en la entrada de un modelo de lenguaje (LLM), logrando que el modelo cambie su comportamiento y ejecute órdenes no previstas originalmente
 
+### Técnicas
 
-https://github.com/JailbreakBench/jailbreakbench
-
-
-https://github.com/TUD-ARTS-2023/LLM-red-teaming-prompts/tree/main
-
-
-```from datasets import load_dataset
-
-ds = load_dataset("deepset/prompt-injections")```
-
-
-walledai/AdvBench
-JasperLS/prompt-injections
-walledai/JailbreakHub
+- Inyección directa: El atacante introduce comandos explícitos en la interfaz del modelo, como “Ignora todas las instrucciones anteriores” o adoptar roles persuasivos para que el modelo obedezca. Algunas subtécnicas son:
+  1. Adición de reglas: Se agregan nuevas instrucciones que contradicen las existentes.</br>
+  2. Negación de reglas: Se indica que ciertas restricciones ya no aplican.</br>
+  3. Supresión de rechazos: Se fuerza al modelo a no rechazar ninguna petición.</br>
+  4. Prompting de caso especial: Se convence al modelo de que la situación actual es una excepción legítima.</br>
+- Inyección indirecta: Se ocultan comandos maliciosos dentro de contenido externo, como documentos, páginas web o correos electrónicos, que el modelo procesa sin saber que contienen instrucciones ocultas. Esto incluye técnicas de data poisoning y manipulación de pipelines RAG.
+- Inyección persistente o almacenada: Los prompts maliciosos se guardan en bases de datos, historiales de chat o sistemas de conocimiento, activándose cuando el modelo los revisita.
+- Técnicas evasivas y cognitivas: Incluyen hacking cognitivo, sidestepping, role-playing, escenarios hipotéticos, asignación de personalidad y deflexión de tareas. Estas buscan manipular el razonamiento del modelo o evadir restricciones sin ser detectadas.
