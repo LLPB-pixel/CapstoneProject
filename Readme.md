@@ -25,3 +25,13 @@ https://github.com/JailbreakBench/jailbreakbench
 
 
 https://github.com/TUD-ARTS-2023/LLM-red-teaming-prompts/tree/main
+
+
+```from datasets import load_dataset
+
+ds = load_dataset("deepset/prompt-injections")```
+
+
+walledai/AdvBench
+JasperLS/prompt-injections
+walledai/JailbreakHub
