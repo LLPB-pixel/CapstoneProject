@@ -6,46 +6,18 @@ Uso:
 """
 
 import csv
-import re
 import sys
 import os
-import matplotlib.pyplot as plt
 
-
-
-
-def plot_histograms(rows, output_img="prompts_histogram.png"):
-    benign_lengths    = [len(r["prompt"]) for r in rows if r["label"].strip().lower() in ('good', 'benign', 'safe', '0')]
-    malignant_lengths = [len(r["prompt"]) for r in rows if r["label"].strip().lower() not in ('good', 'benign', 'safe', '0')]
-
-    if not benign_lengths and not malignant_lengths:
-        print("Sin datos suficientes para histogramas.")
-        return
-
-    plt.figure(figsize=(10, 5))
-
-    plt.subplot(1, 2, 1)
-    plt.hist(benign_lengths, bins=50, color='green', alpha=0.7)
-    plt.title("Tamaño Prompts Benignos")
-    plt.xlabel("Longitud (caracteres)")
-    plt.ylabel("Frecuencia")
-
-    plt.subplot(1, 2, 2)
-    plt.hist(malignant_lengths, bins=50, color='red', alpha=0.7)
-    plt.title("Tamaño Prompts Malignos")
-    plt.xlabel("Longitud (caracteres)")
-    plt.ylabel("Frecuencia")
-
-    plt.tight_layout()
-    plt.savefig(output_img)
-    print(f"\n📊 Histogramas guardados en '{output_img}'.")
 
 
 def merge(file1, file2, output):
     print(f"Leyendo {file1}...")
-    rows1 = csv.read_csv(file1)
+    with open(file1, 'r', encoding='utf-8') as f:
+        rows1 = list(csv.DictReader(f, delimiter=';'))
     print(f"Leyendo {file2}...")
-    rows2 = csv.read_csv(file2)
+    with open(file2, 'r', encoding='utf-8') as f:
+        rows2 = list(csv.DictReader(f, delimiter=';'))
 
     total_raw = len(rows1) + len(rows2)
 
@@ -58,14 +30,18 @@ def merge(file1, file2, output):
     deduped = list(seen.values())
     duplicates = total_raw - len(deduped)
 
-    # Filtrar y limpiar
-    final = deduped
     # Guardar
+    final = deduped
     with open(output, "w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f, delimiter=";", quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(["prompt", "label", "source"])
-        for row in final:
-            writer.writerow([row["prompt"], row["label"], row["source"]])
+        if rows1:
+            fieldnames = list(rows1[0].keys())
+        elif rows2:
+            fieldnames = list(rows2[0].keys())
+        else:
+            fieldnames = ["prompt"]
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+        writer.writeheader()
+        writer.writerows(final)
 
     # Resumen
     print(f"\n📄 Archivo 1:              {len(rows1):>6} prompts")
@@ -74,16 +50,9 @@ def merge(file1, file2, output):
     print(f"✅ Resultado final:         {len(final):>6} prompts únicos → {output}")
 
 
-    plot_histograms(final)
-
-
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Uso: python merge_prompts.py <archivo1.csv> <archivo2.csv> <output.csv>")
-        sys.exit(1)
-
-    f1 = "combined_prompts_dataset.csv"
-    f2 = "IA_defs.csv"
+    f1 = "temp_combined_prompts_dataset.csv"
+    f2 = "combined_prompts_dataset.csv"
     out = "def_combined_prompts_dataset.csv"
 
     for f in (f1, f2):
