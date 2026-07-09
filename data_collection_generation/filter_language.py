@@ -76,16 +76,16 @@ def main():
                 else:
                     counts['Unknown/Other'] += 1
                 
-                if len(langs) > 0:
-                    writer.writerow(row)
-                    kept += 1
+
+                writer.writerow(row)
+                kept += 1
                     
-                    if label_idx != -1 and len(row) > label_idx:
-                        label_val = row[label_idx].strip().lower()
-                        if label_val in ['good', 'benign', 'safe', '0']:
-                            benign_lengths.append(len(prompt_text))
-                        else:
-                            malignant_lengths.append(len(prompt_text))
+                if label_idx != -1 and len(row) > label_idx:
+                    label_val = row[label_idx].strip().lower()
+                    if label_val in ['good', 'benign', 'safe', '0']:
+                        benign_lengths.append(len(prompt_text))
+                    else:
+                        malignant_lengths.append(len(prompt_text))
                             
     print(f"\nDone. Processed {total} rows. Kept {kept} rows. Saved to {output_file}.")
     print("Language Counts (Burdo):")
