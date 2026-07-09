@@ -1,7 +1,7 @@
 import csv
 import re
 import matplotlib.pyplot as plt
-
+## Este codigo hace los siguiente remove_emojis detect_languages y crea histogramas
 english_words = {"the", "and", "to", "of", "in", "is", "that", "it", "for", "on", "with"}
 spanish_words = {"el", "la", "los", "las", "de", "que", "en", "un", "una", "por", "para", "con"}
 french_words = {"le", "la", "les", "de", "et", "dans", "un", "une", "pour", "qui", "que", "sur", "à"}
@@ -73,7 +73,6 @@ def main():
                     counts[langs[0]] += 1
                 elif len(langs) > 1:
                     counts['Multiple'] += 1
-                    # Impresión de prompts en múltiples idiomas eliminada
                 else:
                     counts['Unknown/Other'] += 1
                 
