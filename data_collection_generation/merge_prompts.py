@@ -176,7 +176,9 @@ if __name__ == "__main__":
         print("Uso: python merge_prompts.py <archivo1.csv> <archivo2.csv> <output.csv>")
         sys.exit(1)
 
-    f1, f2, out = sys.argv[1], sys.argv[2], sys.argv[3]
+    f1 = "combined_prompts_dataset.csv"
+    f2 = "IA_defs.csv"
+    out = "combined_prompts_dataset.csv"
 
     for f in (f1, f2):
         if not os.path.exists(f):
