@@ -1,6 +1,7 @@
 import csv
 import re
 import matplotlib.pyplot as plt
+import emoji
 ## Este codigo hace los siguiente remove_emojis detect_languages y crea histogramas
 english_words = {"the", "and", "to", "of", "in", "is", "that", "it", "for", "on", "with"}
 spanish_words = {"el", "la", "los", "las", "de", "que", "en", "un", "una", "por", "para", "con"}
@@ -10,7 +11,8 @@ german_words = {"der", "die", "das", "und", "in", "zu", "den", "auf", "für", "m
 MAX_PROMPT_LENGTH = 2000
 
 def remove_emojis(text):
-    return re.sub(r'[\U00010000-\U0010ffff]', '', text)
+    # Replaces all emoji characters with an empty string
+    return emoji.replace_emoji(text, replace='')
 
 def detect_languages(text):
     text = text.lower()
