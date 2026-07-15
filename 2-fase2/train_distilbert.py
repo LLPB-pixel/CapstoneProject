@@ -9,6 +9,8 @@ Ejecutar:
 """
 
 import argparse
+import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
@@ -22,8 +24,22 @@ from transformers import (
 )
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 
+try:
+    import wandb  # noqa: F401
+except ImportError:
+    wandb = None
+
 
 MODEL_NAME = "distilbert-base-uncased"
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+
+
+def resolve_path(path: str) -> str:
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return str(candidate)
+    return str((PROJECT_ROOT / candidate).resolve())
 
 
 def compute_metrics(eval_pred):
@@ -41,7 +57,25 @@ def compute_metrics(eval_pred):
 
 def load_split(path: str, tokenizer, max_length: int = 256) -> Dataset:
     df = pd.read_csv(path)
-    ds = Dataset.from_pandas(df[["text", "label"]])
+
+    if "prompt" in df.columns and "text" not in df.columns:
+        df = df.rename(columns={"prompt": "text"})
+
+    if "text" not in df.columns or "label" not in df.columns:
+        raise ValueError(f"El archivo {path} debe contener columnas 'text' y 'label'.")
+
+    df = df[["text", "label"]].copy()
+    df["text"] = df["text"].fillna("").astype(str)
+    df["text"] = df["text"].apply(lambda x: x.strip())
+    df["text"] = df["text"].replace(r"^\s*$", "", regex=True)
+
+    label_values = sorted(df["label"].dropna().astype(str).unique())
+    label_mapping = {label: int(idx) for idx, label in enumerate(label_values)}
+    df["label"] = df["label"].fillna(label_values[0] if label_values else "0").astype(str)
+    df["label"] = df["label"].map(label_mapping)
+    df = df.dropna(subset=["label"])
+
+    ds = Dataset.from_pandas(df)
 
     def tokenize(batch):
         return tokenizer(batch["text"], truncation=True, max_length=max_length, padding="max_length")
@@ -51,13 +85,33 @@ def load_split(path: str, tokenizer, max_length: int = 256) -> Dataset:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data_dir", default="./data")
-    ap.add_argument("--out_dir", default="../models/distilbert_sentinel")
+    ap.add_argument("--data_dir", default=str(PROJECT_ROOT / "Data"))
+    ap.add_argument("--out_dir", default=str(PROJECT_ROOT / "models" / "distilbert_sentinel"))
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--batch_size", type=int, default=16)
     ap.add_argument("--lr", type=float, default=2e-5)
     ap.add_argument("--max_length", type=int, default=256)
+    ap.add_argument("--wandb_project", default=os.getenv("WANDB_PROJECT", "capstone-distilbert"))
+    ap.add_argument("--wandb_entity", default=os.getenv("WANDB_ENTITY"))
+    ap.add_argument("--wandb_run_name", default=os.getenv("WANDB_RUN_NAME"))
+    ap.add_argument(
+        "--wandb_mode",
+        choices=["online", "offline", "disabled"],
+        default=os.getenv("WANDB_MODE", "online"),
+    )
     args = ap.parse_args()
+    args.data_dir = resolve_path(args.data_dir)
+    args.out_dir = resolve_path(args.out_dir)
+
+    if args.wandb_mode != "disabled":
+        if wandb is None:
+            raise RuntimeError("wandb no está instalado. Instala it con: pip install wandb")
+        os.environ["WANDB_PROJECT"] = args.wandb_project
+        os.environ["WANDB_MODE"] = args.wandb_mode
+        if args.wandb_entity:
+            os.environ["WANDB_ENTITY"] = args.wandb_entity
+        if args.wandb_run_name:
+            os.environ["WANDB_RUN_NAME"] = args.wandb_run_name
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=2)
@@ -80,7 +134,8 @@ def main():
         metric_for_best_model="f1",
         logging_steps=50,
         fp16=torch.cuda.is_available(),
-        report_to="none",
+        report_to=["wandb"] if args.wandb_mode != "disabled" else "none",
+        run_name=args.wandb_run_name or f"distilbert-{args.epochs}e",
     )
 
     trainer = Trainer(
@@ -92,7 +147,25 @@ def main():
         callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
     )
 
-    trainer.train()
+    if args.wandb_mode != "disabled":
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.wandb_run_name or f"distilbert-{args.epochs}e",
+            config={
+                "model_name": MODEL_NAME,
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "learning_rate": args.lr,
+                "max_length": args.max_length,
+            },
+        )
+
+    try:
+        trainer.train()
+    finally:
+        if args.wandb_mode != "disabled":
+            wandb.finish()
 
     print("\n=== Evaluación en TEST (holdout final) ===")
     test_metrics = trainer.evaluate(test_ds)

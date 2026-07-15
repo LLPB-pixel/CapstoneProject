@@ -1,0 +1,11 @@
+  1%|▋                                                                                              | 520/68391 [01:04<2:20:53,  8.03it/s]
+{'loss': '0.6835', 'grad_norm': '1.202', 'learning_rate': '1.433e-07', 'epoch': '0.002193'}
+{'loss': '0.6778', 'grad_norm': '1.277', 'learning_rate': '2.895e-07', 'epoch': '0.004387'}
+{'loss': '0.6666', 'grad_norm': '1.59', 'learning_rate': '4.357e-07', 'epoch': '0.00658'}
+{'loss': '0.6499', 'grad_norm': '1.474', 'learning_rate': '5.819e-07', 'epoch': '0.008773'}
+{'loss': '0.6234', 'grad_norm': '1.918', 'learning_rate': '7.281e-07', 'epoch': '0.01097'}
+{'loss': '0.5662', 'grad_norm': '2.032', 'learning_rate': '8.743e-07', 'epoch': '0.01316'}
+{'loss': '0.481', 'grad_norm': '1.879', 'learning_rate': '1.02e-06', 'epoch': '0.01535'}
+{'loss': '0.4151', 'grad_norm': '2.665', 'learning_rate': '1.167e-06', 'epoch': '0.01755'}
+{'loss': '0.3252', 'grad_norm': '2.168', 'learning_rate': '1.313e-06', 'epoch': '0.01974'}
+{'loss': '0.2722', 'grad_norm': '1.543', 'learning_rate': '1.459e-06', 'epoch': '0.02193'}

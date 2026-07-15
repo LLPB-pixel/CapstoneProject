@@ -1,0 +1,40 @@
+{
+  "os": "Linux-6.17.0-35-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.11.15",
+  "startedAt": "2026-07-14T17:15:31.919892Z",
+  "program": "/media/arnau/Data1_Test/UNIVERSIDAD/diploma_Samsung/CapstoneProject/2-fase2/train_distilbert.py",
+  "codePath": "2-fase2/train_distilbert.py",
+  "codePathLocal": "2-fase2/train_distilbert.py",
+  "git": {
+    "remote": "https://github.com/LLPB-pixel/CapstoneProject.git",
+    "commit": "e9fc2d837a10bd180457b5984fa54f763c2e91b9"
+  },
+  "email": "arnautaga@gmail.com",
+  "root": "/media/arnau/Data1_Test/UNIVERSIDAD/diploma_Samsung/CapstoneProject",
+  "host": "arnau-Stealth-15-A13VF",
+  "executable": "/home/arnau/miniconda3/envs/SamsungAI/bin/python",
+  "cpu_count": 10,
+  "cpu_count_logical": 16,
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "502717767680",
+      "used": "250331512832"
+    }
+  },
+  "memory": {
+    "total": "33341440000"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+      "memoryTotal": "8585740288",
+      "cudaCores": 3072,
+      "architecture": "Ada",
+      "uuid": "GPU-41558b6c-cbf8-b9a4-5a10-638e179ba599"
+    }
+  ],
+  "cudaVersion": "13.0",
+  "writerId": "37542vjd5xx78kqhpvgku4pz0limchvv"
+}
