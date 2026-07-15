@@ -8,15 +8,25 @@ Flujo de 3 capas:
 3. Capa 3: LLM-Judge via Mistral API (analisis semantico)
 
 Uso:
-    python pipeline.py <MISTRAL_API_KEY> [--model_path RUTA_AL_MODELO]
+    # Modo CLI
+    python pipeline.py <MISTRAL_API_KEY> [--model_path RUTA_AL_MODELO] [--prompt PROMPT]
+    
+    # Modo API (servidor web)
+    python pipeline.py <MISTRAL_API_KEY> --serve [--port PUERTO] [--model_path RUTA]
     
 Ejemplo:
-    python pipeline.py sk-1234567890 --model_path ../models/distilbert_sentinel
+    python pipeline.py sk-1234567890 --serve --port 8000
 """
 
 import sys
 import json
 import argparse
+import time
+import logging
+import random
+from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
+
 from LLM_evaluation import evaluate_prompt_security
 
 # ---------------------------------------------------------------------------
@@ -30,6 +40,13 @@ LLM_THRESHOLD = 5.0        # Si score < esto en Mistral, BLOCKED
 # Ruta por defecto al modelo DistilBERT fine-tuneado
 DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
 MODEL_PATH = DEFAULT_MODEL_PATH
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # 1. Capa 1: Filtro Heuristico
@@ -258,6 +275,91 @@ def main():
         else:
             print(" (aprobado)")
         print("=" * 70)
+
+
+# ---------------------------------------------------------------------------
+# Funciones de simulacion (para modo demo sin backend)
+# ---------------------------------------------------------------------------
+
+def is_malicious_prompt(prompt: str) -> bool:
+    """Detecta si un prompt es malicioso basado en patrones conocidos."""
+    prompt_lower = prompt.lower()
+    malicious_patterns = [
+        'ignora', 'ignorar', 'ignore',
+        'dan mode', 'modo dan',
+        'revela tu prompt', 'reveal your prompt',
+        'instrucciones anteriores', 'previous instructions',
+        'desestimar', 'disregard',
+        'olvidar todo', 'forget everything',
+        'no restricciones', 'no restrictions',
+        'unfiltered', 'uncensored',
+        'prompt del sistema', 'system prompt',
+        'jailbreak',
+        'bypass',
+        'defeat',
+        'evade',
+    ]
+    return any(pattern in prompt_lower for pattern in malicious_patterns)
+
+
+def simulate_pipeline(prompt: str) -> Dict[str, Any]:
+    """
+    Simula el pipeline completo sin necesidad de modelos o API externas.
+    Utile para demostraciones o cuando no se tiene acceso a los recursos.
+    
+    Args:
+        prompt: El prompt a analizar
+        
+    Returns:
+        Diccionario con la misma estructura que run_pipeline()
+    """
+    is_malicious = is_malicious_prompt(prompt)
+    
+    # Generar valores realistas
+    layer1_score = is_malicious * (0.5 + random.random() * 0.5) + (1 - is_malicious) * random.random() * 0.3
+    layer2_score = is_malicious * (0.7 + random.random() * 0.3) + (1 - is_malicious) * random.random() * 0.4
+    layer3_score = is_malicious * (3 + random.random() * 2) + (1 - is_malicious) * (7 + random.random() * 3)
+    
+    # Categorias detectadas
+    triggered_categories = []
+    if is_malicious:
+        if 'ignora' in prompt.lower() or 'disregard' in prompt.lower():
+            triggered_categories.append('instruction_override')
+        if 'dan' in prompt.lower():
+            triggered_categories.append('roleplay_jailbreak')
+        if 'prompt' in prompt.lower() and ('revela' in prompt.lower() or 'reveal' in prompt.lower()):
+            triggered_categories.append('system_prompt_extraction')
+        if 'bypass' in prompt.lower() or 'evade' in prompt.lower():
+            triggered_categories.append('filter_bypass')
+        if not triggered_categories:
+            triggered_categories = ['instruction_override']
+    
+    result = {
+        'prompt': prompt,
+        'final_verdict': 'BLOCKED' if is_malicious else 'CLEAN',
+        'blocked_at_layer': 3 if is_malicious else None,
+        'layer1': {
+            'is_suspicious': layer1_score > HEURISTIC_THRESHOLD,
+            'risk_score': round(layer1_score, 4),
+            'triggered_categories': triggered_categories,
+            'should_escalate': True
+        },
+        'layer2': {
+            'label': 'injection' if is_malicious else 'benign',
+            'confidence': round(0.85 + (0.15 if is_malicious else 0.1) * random.random(), 4),
+            'should_escalate': True,
+            'score': round(layer2_score, 4)
+        },
+        'layer3': {
+            'is_good': not is_malicious,
+            'score': round(layer3_score, 4),
+            'evaluation': 'Prompt malicioso detectado: inyeccion de instrucciones' if is_malicious 
+                        else 'Prompt seguro, no se detectaron amenazas'
+        },
+        'processing_time': round(2.0 + random.random() * 1.5, 4)
+    }
+    
+    return result
 
 
 # Ejemplo de uso
