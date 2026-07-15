@@ -1,18 +1,22 @@
 """
-Pipeline simplificado de deteccion de prompt injection
-======================================================
+Pipeline de deteccion de prompt injection
+=========================================
 
-Flujo simple:
-1. Capa 1: Filtro Heuristico
-2. Capa 2: Modelo fine-tuneado (placeholder - por implementar)
-3. Capa 3: LLM-Judge via Mistral API
+Flujo de 3 capas:
+1. Capa 1: Filtro Heuristico (regex, palabras clave, perplejidad)
+2. Capa 2: Modelo DistilBERT fine-tuneado (clasificacion binaria)
+3. Capa 3: LLM-Judge via Mistral API (analisis semantico)
 
 Uso:
-    python pipeline.py TU_API_KEY_AQUI
+    python pipeline.py <MISTRAL_API_KEY> [--model_path RUTA_AL_MODELO]
+    
+Ejemplo:
+    python pipeline.py sk-1234567890 --model_path ../models/distilbert_sentinel
 """
 
 import sys
 import json
+import argparse
 from LLM_evaluation import evaluate_prompt_security
 
 # ---------------------------------------------------------------------------
@@ -22,6 +26,10 @@ from LLM_evaluation import evaluate_prompt_security
 # Umbrales
 HEURISTIC_THRESHOLD = 0.3  # Si score >= esto, escalar a capa 2
 LLM_THRESHOLD = 5.0        # Si score < esto en Mistral, BLOCKED
+
+# Ruta por defecto al modelo DistilBERT fine-tuneado
+DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
+MODEL_PATH = DEFAULT_MODEL_PATH
 
 # ---------------------------------------------------------------------------
 # 1. Capa 1: Filtro Heuristico
@@ -49,27 +57,50 @@ def heuristic_filter(prompt):
 
 
 # ---------------------------------------------------------------------------
-# 2. Capa 2: Modelo fine-tuneado (PLACEHOLDER)
+# 2. Capa 2: Modelo fine-tuneado (DistilBERT)
 # ---------------------------------------------------------------------------
 
-def layer2_filter(prompt):
+def layer2_filter(prompt, model_path="../models/distilbert_sentinel"):
     """
-    Placeholder para el modelo fine-tuneado.
-    AUN NO IMPLEMENTADO - por defecto escala a capa 3.
+    Ejecuta el modelo DistilBERT fine-tuneado para clasificar el prompt.
     
-    Cuando lo implementéis, debe devolver un dict con:
-    {
-        'label': 'injection' o 'benign',
-        'confidence': float (0.0 - 1.0),
-        'should_escalate': bool  # True para pasar a capa 3
-    }
+    Args:
+        prompt: Prompt a analizar
+        model_path: Ruta al directorio del modelo fine-tuneado
+        
+    Returns:
+        Diccionario con:
+        {
+            'label': 'injection' o 'benign',
+            'confidence': float (0.0 - 1.0),
+            'should_escalate': bool  # True para pasar a capa 3
+            'score': float  # Probabilidad de ser injection
+        }
     """
-    return {
-        'label': 'PLACEHOLDER',
-        'confidence': None,
-        'should_escalate': True,  # Siempre escalamos hasta que el modelo esté listo
-        'note': 'Modelo fine-tuneado no integrado aún'
-    }
+    try:
+        from distilbert_inference import layer2_filter as _layer2_filter
+        return _layer2_filter(prompt, model_path)
+    except ImportError:
+        # Fallback si no se puede importar (para compatibilidad)
+        logger = __import__('logging').getLogger(__name__)
+        logger.warning("No se pudo importar distilbert_inference. Usando fallback...")
+        return {
+            'label': 'benign',
+            'confidence': 0.5,
+            'should_escalate': True,
+            'score': 0.5,
+            'note': 'Fallback: modelo no disponible'
+        }
+    except Exception as e:
+        logger = __import__('logging').getLogger(__name__)
+        logger.error(f"Error en layer2_filter: {e}")
+        return {
+            'label': 'injection',
+            'confidence': 0.0,
+            'should_escalate': True,
+            'score': 1.0,
+            'error': str(e)
+        }
 
 
 # Pipeline principal
@@ -104,17 +135,25 @@ def run_pipeline(prompt, api_key):
         print("  -> Capa 1: Limpio")
     
     # --- Capa 2: Modelo fine-tuneado (SIEMPRE se ejecuta) ---
-    print(f"\n[Capa 2] Analizando con modelo fine-tuneado...")
-    l2 = layer2_filter(prompt)
+    print(f"\n[Capa 2] Analizando con modelo DistilBERT fine-tuneado...")
+    l2 = layer2_filter(prompt, model_path=MODEL_PATH)
     results['layer2'] = l2
     results['layer2_detected'] = l2.get('label') == 'injection'
-    print(f"  Label: {l2['label']}, Confianza: {l2['confidence']}, Escalar: {l2['should_escalate']}")
+    
+    label = l2.get('label', 'unknown')
+    confidence = l2.get('confidence', 0.0)
+    score = l2.get('score', 0.0)
+    should_escalate = l2.get('should_escalate', True)
+    
+    print(f"  Label: {label}, Confianza: {confidence:.4f}, Injection Score: {score:.4f}")
+    print(f"  Escalar a Capa 3: {should_escalate}")
+    
     if l2.get('label') == 'injection':
         print("  -> Capa 2: DETECTADO como injection")
     elif l2.get('label') == 'benign':
         print("  -> Capa 2: Limpio (benign)")
     else:
-        print("  -> Capa 2: Placeholder")
+        print(f"  -> Capa 2: Estado desconocido - {l2.get('note', l2.get('error', 'N/A'))}")
     
     # --- Capa 3: Mistral API (SIEMPRE se ejecuta) ---
     print(f"\n[Capa 3] Analizando con Mistral API...")
@@ -144,14 +183,43 @@ def run_pipeline(prompt, api_key):
 
 
 
-# Ejemplo de uso
+# Pipeline principal (funcion separada para permitir imports)
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Uso: python pipeline.py <MISTRAL_API_KEY>")
-        sys.exit(1)
+def main():
+    """Funcion principal para ejecutar el pipeline desde CLI."""
+    parser = argparse.ArgumentParser(
+        description="Pipeline de deteccion de Prompt Injection (3 capas)"
+    )
+    parser.add_argument(
+        "api_key",
+        type=str,
+        help="API Key de Mistral para la Capa 3 (LLM-Judge)"
+    )
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        default=DEFAULT_MODEL_PATH,
+        help=f"Ruta al modelo DistilBERT fine-tuneado (default: {DEFAULT_MODEL_PATH})"
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default=None,
+        help="Prompt individual a analizar (si no se proporciona, usa prompts de prueba)"
+    )
+    parser.add_argument(
+        "--list_prompts",
+        action="store_true",
+        help="Muestra los prompts de prueba disponibles y sale"
+    )
     
-    API_KEY = sys.argv[1]
+    args = parser.parse_args()
+    
+    # Configurar ruta del modelo
+    global MODEL_PATH
+    MODEL_PATH = args.model_path
+    
+    API_KEY = args.api_key
     
     # Prompts de prueba
     test_prompts = [
@@ -161,11 +229,22 @@ if __name__ == "__main__":
         "Explícame cómo funciona el gradient descent",
     ]
     
+    if args.list_prompts:
+        print("Prompts de prueba disponibles:")
+        for i, p in enumerate(test_prompts, 1):
+            print(f"  {i}. {p[:60]}...")
+        sys.exit(0)
+    
+    # Usar prompt individual o todos los de prueba
+    prompts_to_test = [args.prompt] if args.prompt else test_prompts
+    
     print("=" * 70)
-    print("PIPELINE SIMPLIFICADO DE DETECCION DE PROMPT INJECTION")
+    print("PIPELINE DE DETECCION DE PROMPT INJECTION")
+    print("=" * 70)
+    print(f"Modelo Capa 2: {MODEL_PATH}")
     print("=" * 70)
     
-    for prompt in test_prompts:
+    for prompt in prompts_to_test:
         print(f"\n{'=' * 70}")
         print(f"Prompt: {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
         print("-" * 70)
@@ -179,3 +258,8 @@ if __name__ == "__main__":
         else:
             print(" (aprobado)")
         print("=" * 70)
+
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    main()
