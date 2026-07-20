@@ -99,6 +99,12 @@ def main():
         choices=["online", "offline", "disabled"],
         default=os.getenv("WANDB_MODE", "online"),
     )
+    ap.add_argument(
+        "--save",
+        choices=["yes", "no"],
+        default="no",
+        help="Guardar el modelo y tokenizador antes de iniciar el entrenamiento.",
+    )
     args = ap.parse_args()
     args.data_dir = resolve_path(args.data_dir)
     args.out_dir = resolve_path(args.out_dir)
@@ -160,6 +166,11 @@ def main():
                 "max_length": args.max_length,
             },
         )
+
+    if args.save == "yes":
+        print(f"\n[INFO] Guardando modelo y tokenizador antes de cualquier iteración en: {args.out_dir}")
+        trainer.save_model(args.out_dir)
+        tokenizer.save_pretrained(args.out_dir)
 
     try:
         trainer.train()
