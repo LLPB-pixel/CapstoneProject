@@ -34,11 +34,18 @@ Response:
 import argparse
 import time
 import logging
+from pathlib import Path
 from typing import Optional
 
 # Configuracion
 DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
 DEFAULT_PORT = 8000
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_INDEX_PATH = PROJECT_ROOT / "frontend" / "index.html"
+
+# Variables globales para el servidor (usadas con reload)
+SERVER_API_KEY = None
+SERVER_MODEL_PATH = None
 
 # Configurar logging
 logging.basicConfig(
@@ -60,17 +67,25 @@ def set_model_path(path: str):
     pipe_module.MODEL_PATH = path
 
 
-def create_app(api_key: str, model_path: str = DEFAULT_MODEL_PATH):
+def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
     """Crea la aplicacion FastAPI."""
     try:
         from fastapi import FastAPI, HTTPException, Request
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import JSONResponse
+        from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
         from pydantic import BaseModel
     except ImportError:
         logger.error("FastAPI no esta instalado. Instalalo con: pip install fastapi uvicorn")
         raise
 
+    # Obtener parametros de variables globales si no se proporcionan
+    # (esto ocurre cuando uvicorn recarga la aplicacion)
+    global SERVER_API_KEY, SERVER_MODEL_PATH
+    if api_key is None:
+        api_key = SERVER_API_KEY
+    if model_path is None:
+        model_path = SERVER_MODEL_PATH
+    
     # Configurar ruta del modelo
     set_model_path(model_path)
     
@@ -135,6 +150,16 @@ def create_app(api_key: str, model_path: str = DEFAULT_MODEL_PATH):
                 detail=f"Error al procesar el prompt: {str(e)}"
             )
 
+    # Servir la página principal del frontend
+    @app.get("/", response_class=HTMLResponse)
+    async def serve_frontend():
+        """Devuelve el HTML del frontend al abrir la ruta raíz."""
+        if not FRONTEND_INDEX_PATH.exists():
+            logger.error(f"No se encontró el archivo del frontend en: {FRONTEND_INDEX_PATH}")
+            raise HTTPException(status_code=404, detail="Frontend no encontrado")
+
+        return FileResponse(FRONTEND_INDEX_PATH, media_type="text/html")
+
     # Endpoint de salud
     @app.get("/health")
     async def health_check():
@@ -174,7 +199,11 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
         logger.error("Uvicorn no esta instalado. Instalalo con: pip install uvicorn")
         return
 
-    app = create_app(api_key, model_path)
+    # Guardar los parametros en variables globales para que puedan ser accedidos
+    # por la funcion que crea la app cuando se recarga
+    global SERVER_API_KEY, SERVER_MODEL_PATH
+    SERVER_API_KEY = api_key
+    SERVER_MODEL_PATH = model_path
     
     logger.info(f"Iniciando servidor API en http://localhost:{port}")
     logger.info(f"Modelo DistilBERT: {model_path}")
