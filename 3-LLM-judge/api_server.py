@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Optional
 
 # Configuracion
-DEFAULT_MODEL_PATH = "../models/distilbert_sentinel/checkpoint-22797"
+DEFAULT_MODEL_PATH = "./models/distilbert_sentinel/checkpoint-22797"
 DEFAULT_PORT = 8000
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_INDEX_PATH = PROJECT_ROOT / "frontend" / "index.html"
@@ -123,8 +123,12 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
         3. LLM-Judge (Mistral API)
         """
         start_time = time.time()
-        
+
         try:
+            print(f"\n{'='*60}")
+            print(f"[API] Nuevo request - Prompt: \"{request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}\"")
+            print(f"{'='*60}")
+
             # Ejecutar pipeline
             result = run_pipeline(request.prompt, api_key)
             
@@ -140,7 +144,15 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
             
             # Añadir tiempo a la respuesta
             result["processing_time"] = round(processing_time, 4)
-            
+
+            print(f"[API] Veredicto: {result['final_verdict']}", end="")
+            if result['blocked_at_layer']:
+                print(f" (bloqueado en capa {result['blocked_at_layer']})")
+            else:
+                print(" (limpio)")
+            print(f"[API] Tiempo total: {processing_time:.2f}s")
+            print(f"{'='*60}\n")
+
             return result
             
         except Exception as e:

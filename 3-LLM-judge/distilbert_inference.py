@@ -50,9 +50,9 @@ class DistilBertClassifier:
         """
         # Ruta por defecto
         if model_path is None:
-            default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
+            default_path = Path(__file__).parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
             if not default_path.exists():
-                default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
+                default_path = Path(__file__).parent / "models" / "distilbert_sentinel"
             model_path = str(default_path)
         
         self.model_path = Path(model_path).resolve()
@@ -77,7 +77,7 @@ class DistilBertClassifier:
 
             # Verificar si existe el modelo
             if not self.model_path.exists() or not (self.model_path / "config.json").exists():
-                default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
+                default_path = Path(__file__).parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
                 if default_path.exists():
                     self.model_path = default_path
                     logger.warning(f"Modelo no encontrado en la ruta indicada, probando {default_path}")
@@ -134,7 +134,7 @@ class DistilBertClassifier:
             return_tensors="pt"
         )
         
-        return encoding["input_ids"].to(self.device)
+        return encoding["input_ids"].to(self.device), encoding["attention_mask"].to(self.device)
     
     def predict(self, text: str, return_probs: bool = False) -> Dict[str, any]:
         """
@@ -154,29 +154,33 @@ class DistilBertClassifier:
         """
         try:
             # Preprocesar
-            input_ids = self._preprocess(text)
-            
+            input_ids, attention_mask = self._preprocess(text)
+            non_pad_tokens = attention_mask.sum().item()
+            print(f"  [DistilBERT] Prompt: \"{text[:80]}{'...' if len(text) > 80 else ''}\"")
+            print(f"  [DistilBERT] Tokens reales: {int(non_pad_tokens)}/{self.max_length} (padding: {self.max_length - int(non_pad_tokens)})")
+
             # Inferencia
             with torch.no_grad():
-                outputs = self.model(input_ids)
+                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
                 logits = outputs.logits
-                
+
                 # Softmax para obtener probabilidades
                 probs = torch.softmax(logits, dim=-1)
                 probs = probs.cpu().numpy()[0]
-                
+
                 # Obtener prediccion
                 pred_idx = torch.argmax(logits, dim=-1).item()
                 label = self.label_map[pred_idx]
                 confidence = float(probs[pred_idx])
-                
+
                 # Score: probabilidad de ser injection (clase 1)
                 injection_score = float(probs[1])
-                
+
                 # Decidir si escalar: si confianza es baja O si es injection con alta confianza
                 # Escalamos siempre si es ambiguo (confianza < threshold)
                 # O si es claramente injection pero queremos confirmar con Capa 3
                 should_escalate = confidence < self.escalate_threshold
+                print(f"  [DistilBERT] Probs: benign={probs[0]:.4f}  injection={probs[1]:.4f}  |  label={label}  conf={confidence:.4f}  escalate={should_escalate}")
                 
                 result = {
                     "label": label,

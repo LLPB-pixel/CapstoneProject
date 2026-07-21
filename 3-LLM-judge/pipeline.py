@@ -38,7 +38,7 @@ HEURISTIC_THRESHOLD = 0.3  # Si score >= esto, escalar a capa 2
 LLM_THRESHOLD = 5.0        # Si score < esto en Mistral, BLOCKED
 
 # Ruta por defecto al modelo DistilBERT fine-tuneado
-DEFAULT_MODEL_PATH = "../models/distilbert_sentinel/checkpoint-22797"
+DEFAULT_MODEL_PATH = "./models/distilbert_sentinel/checkpoint-22797"
 MODEL_PATH = DEFAULT_MODEL_PATH
 
 # Configurar logging
@@ -77,7 +77,7 @@ def heuristic_filter(prompt):
 # 2. Capa 2: Modelo fine-tuneado (DistilBERT)
 # ---------------------------------------------------------------------------
 
-def layer2_filter(prompt, model_path="../models/distilbert_sentinel"):
+def layer2_filter(prompt, model_path="./models/distilbert_sentinel/checkpoint-22797"):
     """
     Ejecuta el modelo DistilBERT fine-tuneado para clasificar el prompt.
     
