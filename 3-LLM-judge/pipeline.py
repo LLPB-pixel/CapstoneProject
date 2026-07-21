@@ -58,7 +58,7 @@ def heuristic_filter(prompt):
     Devuelve un diccionario con el resultado.
     """
     # Importamos el modulo del filtro heuristico
-    sys.path.insert(0, '../2-heuristic_filters')
+    sys.path.insert(0, '../1-heuristic_filters')
     from heuristic_filter import HeuristicFilter
     
     # Creamos el filtro (sin perplexity para hacerlo mas rapido)

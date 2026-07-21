@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  prompt-injection-detector:
+    build: .
+    container_name: prompt-injection-detector
+    ports:
+      - "8000:8000"  # FastAPI backend
+    environment:
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-demo}
+    volumes:
+      - ./models:/app/models  # Mount models directory
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

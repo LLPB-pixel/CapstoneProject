@@ -181,11 +181,12 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
     logger.info("Documentacion disponible en: http://localhost:{}/docs".format(port))
     
     uvicorn.run(
-        app,
+        "api_server:create_app",
         host="0.0.0.0",
         port=port,
         log_level="info",
-        reload=True
+        reload=True,
+        factory=True
     )
 
 

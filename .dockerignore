@@ -1,0 +1,49 @@
+# Docker ignore file
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Large files
+*.tar.gz
+*.zip
+*.rar
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Wandb
+wandb/
+
+# Large model files (we'll mount these as volumes)
+!models.tar.xz
