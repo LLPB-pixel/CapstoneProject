@@ -38,7 +38,7 @@ HEURISTIC_THRESHOLD = 0.3  # Si score >= esto, escalar a capa 2
 LLM_THRESHOLD = 5.0        # Si score < esto en Mistral, BLOCKED
 
 # Ruta por defecto al modelo DistilBERT fine-tuneado
-DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
+DEFAULT_MODEL_PATH = "../models/distilbert_sentinel/checkpoint-22797"
 MODEL_PATH = DEFAULT_MODEL_PATH
 
 # Configurar logging
@@ -183,11 +183,19 @@ def run_pipeline(prompt, api_key):
     else:
         print("  -> Capa 3: Limpio")
     
-    # --- Decidir veredicto final (basado en capa 3) ---
-    if not l3.get('is_good', True) or l3.get('score', 10) < LLM_THRESHOLD:
+    # --- Decidir veredicto final (basado en cualquier capa que haya detectado) ---
+    if results['layer1_detected']:
+        results['final_verdict'] = 'BLOCKED'
+        results['blocked_at_layer'] = 1
+        print("\n  -> VERDICTO FINAL: BLOCKED (en Capa 1)")
+    elif results['layer2_detected']:
+        results['final_verdict'] = 'BLOCKED'
+        results['blocked_at_layer'] = 2
+        print("\n  -> VERDICTO FINAL: BLOCKED (en Capa 2)")
+    elif results['layer3_detected']:
         results['final_verdict'] = 'BLOCKED'
         results['blocked_at_layer'] = 3
-        print("\n  -> VERDICTO FINAL: BLOCKED")
+        print("\n  -> VERDICTO FINAL: BLOCKED (en Capa 3)")
     else:
         results['final_verdict'] = 'CLEAN'
         print("\n  -> VERDICTO FINAL: CLEAN")

@@ -50,7 +50,9 @@ class DistilBertClassifier:
         """
         # Ruta por defecto
         if model_path is None:
-            default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
+            default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
+            if not default_path.exists():
+                default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
             model_path = str(default_path)
         
         self.model_path = Path(model_path).resolve()
@@ -66,12 +68,19 @@ class DistilBertClassifier:
     def _load_model(self):
         """Carga el modelo y tokenizer desde el directorio especificado."""
         try:
+            # Si apunta a un directorio sin config.json pero tiene subcarpeta checkpoint, resolverla
+            if self.model_path.exists() and not (self.model_path / "config.json").exists():
+                checkpoints = sorted(list(self.model_path.glob("checkpoint-*")))
+                if checkpoints:
+                    self.model_path = checkpoints[-1]
+                    logger.info(f"Auto-detectado checkpoint en {self.model_path}")
+
             # Verificar si existe el modelo
-            if not self.model_path.exists():
-                default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
+            if not self.model_path.exists() or not (self.model_path / "config.json").exists():
+                default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
                 if default_path.exists():
                     self.model_path = default_path
-                    logger.warning(f"Modelo no encontrado en {self.model_path}, probando {default_path}")
+                    logger.warning(f"Modelo no encontrado en la ruta indicada, probando {default_path}")
                 else:
                     logger.warning(
                         f"Modelo DistilBERT no encontrado en {self.model_path} o {default_path}. "

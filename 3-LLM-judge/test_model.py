@@ -12,7 +12,7 @@ MODEL_PATH = os.path.join(_SCRIPT_DIR, "models", "distilbert_sentinel", "checkpo
 DATA_PATH = os.path.join(_SCRIPT_DIR, "..", "Data", "def_combined_prompts_dataset.csv")
 MAX_LENGTH = 256
 BATCH_SIZE = 64
-SAMPLE_SIZE = 100
+SAMPLE_SIZE = 1000
 
 LABEL_MAP = {0: "benign", 1: "injection"}
 LABEL_MAP_REV = {"good": 0, "bad": 1}

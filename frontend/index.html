@@ -741,12 +741,8 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
             loadingSpinner.classList.add('active');
 
-            // Modo demo: simular el pipeline si no hay backend
-            if (window.location.hostname === 'localhost' || !navigator.onLine) {
-                simulatePipeline(prompt);
-            } else {
-                callAPI(prompt);
-            }
+            // Ejecutar llamada a la API real
+            callAPI(prompt);
         }
 
         function callAPI(prompt) {

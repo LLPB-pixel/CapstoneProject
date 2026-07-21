@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Optional
 
 # Configuracion
-DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
+DEFAULT_MODEL_PATH = "../models/distilbert_sentinel/checkpoint-22797"
 DEFAULT_PORT = 8000
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_INDEX_PATH = PROJECT_ROOT / "frontend" / "index.html"
