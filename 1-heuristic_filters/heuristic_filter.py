@@ -189,6 +189,51 @@ JAILBREAK_PATTERNS = {
         r"sin\s+filtro",
         r"respuesta\s+sin\s+filtro",
     ],
+    "dangerous_content": [
+        # Explosivos y armas - palabras clave directas
+        r"\b(tnt|c4\s+explosive|semtex|nitroglycerin|nitroglycerine|dynamite)\b",
+        r"\b(therm[ie]te?|black\s+powder|gunpowder|gun\s+powder)\b",
+        r"\b(ammonium\s+nitrate|potassium\s+nitrate|sulfuric\s+acid\s+and\s+hydrogen\s+peroxide)\b",
+        r"\b(homemade\s+explosive|ied\b|car\s+bomb|suicide\s+bomb|pipe\s+bomb|molotov)\b",
+        r"\b(explosivos?|explosive[s]?|explosi[óo]n|detonante)\b",
+        r"\b(bomba[s]?|bomb\s+making|bomb\s+making)\b",
+        r"\b(polvora|pólvora|semtex|c4\b|tnt\b)\b",
+        # Cómo fabricar armas / explosivos (inglés + español)
+        r"\b(how\s+to\s+(make|build|construct|assemble|do|create)\s+(a\s+)?(gun|rifle|shotgun|pistol|firearm|weapon|bomb|explosive|ied))\b",
+        r"\b(make|build|construct|create)\s+(a\s+)?(bomb|explosive|weapon|firearm|gun|rifle|shotgun|pistol)\b",
+        r"\b(instructions?\s+(for|on|to)\s+(making?|building|constructing|creating)\s+(a\s+)?(bomb|weapon|explosive|gun))\b",
+        r"\b(cómo\s+(hacer|construir|armar|crear)\s+(una?\s+)?(bomba|arma|explosivo|fusil|rifle|pistola))\b",
+        r"\b(como\s+(hacer|construir|armar|crear)\s+(una?\s+)?(bomba|arma|explosivo|fusil|rifle|pistola))\b",
+        r"\b(hacer\s+bombas?|fabricar?\s+(armas?|bombas?|explosivos?))\b",
+        r"\b(ak[- ]?47|m16|rpg[- ]?7|grenade\s+launcher|ied)\b",
+        # Drogas y sustancias controladas
+        r"\b(make|cook|synthesize|manufacture)\s+(methamphetamine|meth|crack|cocaine|heroin|lsd|mdma|ecstasy|fentanyl|pcp|ghb)\b",
+        r"\b(cocaine|methamphetamine|meth\s+cooking|heroin\s+synthesis|lsd\s+synthesis)\b",
+        r"\b(crystal\s+meth|meth\s+lab|drug\s+manufacturing|drug\s+cooking)\b",
+        r"\b(cómo\s+(hacer|sintetizar|fabricar)\s+(metanfetamina|cocaína|heroína|lsd|mdma|éxtasis|fentanilo))\b",
+        r"\b(como\s+(hacer|sintetizar|fabricar)\s+(metanfetamina|cocaína|heroína|lsd|mdma|éxtasis|fentanilo))\b",
+        r"\b(laboratorio\s+de\s+drogas|fabricación\s+de\s+drogas)\b",
+        # Daño físico / violencia
+        r"\b(how\s+to\s+(kill|murder|assassinate|harm|hurt|poison|stab|shoot)\s+(someone|a\s+person|people|them))\b",
+        r"\b(cómo\s+(matar|asesinar|envenenar|apuñalar|disparar)\s+(a\s+)?(alguien|una\s+persona|gente))\b",
+        r"\b(como\s+(matar|asesinar|envenenar|apuñalar|disparar)\s+(a\s+)?(alguien|una\s+persona|gente))\b",
+        r"\b(suicide\s+(method|technique|way)|how\s+to\s+commit\s+suicide)\b",
+        r"\b(suicidio|método\s+suicida|cómo\s+suicidarse)\b",
+        r"\b(poison\s+(recipe|list|guide)|lethal\s+(dose|substance|chemical))\b",
+        r"\b(sustancias?\s+(letales?|mortales?|t[oó]xicas?)|venenos?\s+(letales?|mortales?))\b",
+        # Terrorismo
+        r"\b(terrorist\s+(attack|cell|plot|plan)|jihad|jihadist)\b",
+        r"\b(ataque\s+terrorista|célula\s+terrorista|terrorismo)\b",
+        r"\b(chemical\s+weapon|biological\s+weapon|nerve\s+gas|sarin|vx\s+gas)\b",
+        r"\b(arma\s+química|arma\s+biológica|gas\s+nervioso|sarin|gas\s+vx)\b",
+        r"\b(radiological\s+dirty\s+bomb|atomic\s+bomb\s+(recipe|instructions))\b",
+        r"\b(bomba\s+sucia|bomba\s+atómica|bomba\s+nuclear)\b",
+        # hacking malicioso / ciberataques
+        r"\b(how\s+to\s+(hack|phish|dox|swat|ddos|ddos attack))\b",
+        r"\b(cómo?\s+(hackear|hacer\s+phishing|doxear|ddos|ataque\s+ddos))\b",
+        r"\b(ransomware\s+(build|create|write|code)|encrypt\s+files?\s+for\s+ransom)\b",
+        r"\b(troyano|ransomware|keylogger|backdoor\s+(creation|build))\b",
+    ],
 }
 
 # Compilar todos los patrones para eficiencia
@@ -916,16 +961,19 @@ class HeuristicFilter:
                 logger.warning(f"Error calculating perplexity: {e}")
                 perplexity = None
 
-        # Scoring simple ponderado - ajustar pesos con validación empírica sobre
-        # tu propio dataset (esto es un punto de partida razonable, no una verdad)
+        # Scoring más agresivo - cualquier patrón conocido o contenido peligroso
+        # debe ser suficiente para marcar como sospechoso
         score = 0.0
-        # cualquier patrón de jailbreak conocido ya es señal fuerte por sí sola;
-        # varias categorías a la vez sube el score pero no es necesario para saltar el umbral
-        score += 0.5 * min(len(triggered), 1) + 0.1 * max(len(triggered) - 1, 0)
-        score += 0.2 * min(len(encoded_payloads), 1)
-        score += 0.15 * min(zw_count / 3, 1.0)
-        score += 0.15 * min(homoglyph_count / 5, 1.0)
-        score += 0.3 * ppl_flag
+        # Categorías de jailbreak: cada una aporta 0.45 (una sola ya supera el umbral de 0.3)
+        score += 0.45 * min(len(triggered), 1) + 0.1 * max(len(triggered) - 1, 0)
+        # Payloads codificados: señal fuerte de evasión
+        score += 0.3 * min(len(encoded_payloads), 1)
+        # Zero-width chars: ofuscación deliberada
+        score += 0.25 * min(zw_count / 3, 1.0)
+        # Homoglifos: suplantación deliberada
+        score += 0.25 * min(homoglyph_count / 5, 1.0)
+        # Perplexity alta: texto generado o adversarial
+        score += 0.4 * ppl_flag
         score = min(score, 1.0)
 
         return HeuristicResult(
