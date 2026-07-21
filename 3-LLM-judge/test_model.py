@@ -37,7 +37,7 @@ class PromptDataset(Dataset):
 
 def main():
     print(f"Cargando modelo desde {MODEL_PATH}...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH, num_labels=2)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)

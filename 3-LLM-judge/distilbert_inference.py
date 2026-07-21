@@ -81,7 +81,7 @@ class DistilBertClassifier:
             
             if self.model_path:
                 logger.info(f"Cargando modelo desde {self.model_path}")
-                self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
+                self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
                 self.model = AutoModelForSequenceClassification.from_pretrained(
                     str(self.model_path), num_labels=2
                 )
