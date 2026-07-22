@@ -1,1 +1,4 @@
 __pycache__
+models
+*.tar.gz
+/__pycache__

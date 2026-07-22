@@ -50,7 +50,9 @@ class DistilBertClassifier:
         """
         # Ruta por defecto
         if model_path is None:
-            default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
+            default_path = Path(__file__).parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
+            if not default_path.exists():
+                default_path = Path(__file__).parent / "models" / "distilbert_sentinel"
             model_path = str(default_path)
             logger.info(f"Usando ruta por defecto para el modelo: {default_path}")
         
@@ -67,12 +69,19 @@ class DistilBertClassifier:
     def _load_model(self):
         """Carga el modelo y tokenizer desde el directorio especificado."""
         try:
+            # Si apunta a un directorio sin config.json pero tiene subcarpeta checkpoint, resolverla
+            if self.model_path.exists() and not (self.model_path / "config.json").exists():
+                checkpoints = sorted(list(self.model_path.glob("checkpoint-*")))
+                if checkpoints:
+                    self.model_path = checkpoints[-1]
+                    logger.info(f"Auto-detectado checkpoint en {self.model_path}")
+
             # Verificar si existe el modelo
-            if not self.model_path.exists():
-                default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
+            if not self.model_path.exists() or not (self.model_path / "config.json").exists():
+                default_path = Path(__file__).parent / "models" / "distilbert_sentinel" / "checkpoint-22797"
                 if default_path.exists():
                     self.model_path = default_path
-                    logger.warning(f"Modelo no encontrado en {self.model_path}, probando {default_path}")
+                    logger.warning(f"Modelo no encontrado en la ruta indicada, probando {default_path}")
                 else:
                     logger.warning(
                         f"Modelo DistilBERT no encontrado en {self.model_path} o {default_path}. "
@@ -82,6 +91,7 @@ class DistilBertClassifier:
             
             if self.model_path:
                 logger.info(f"Cargando modelo desde {self.model_path}")
+<<<<<<< HEAD
                 
                 # Buscar checkpoint si el directorio no tiene config.json
                 checkpoint_path = None
@@ -102,6 +112,9 @@ class DistilBertClassifier:
                     logger.warning(f"Tokenizer no encontrado en {model_load_path}, usando tokenizer base: {e}")
                     self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
                 
+=======
+                self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+>>>>>>> 1a7994579ae0c5d742684107453c8f3232803a4a
                 self.model = AutoModelForSequenceClassification.from_pretrained(
                     model_load_path, num_labels=2
                 )
@@ -145,7 +158,7 @@ class DistilBertClassifier:
             return_tensors="pt"
         )
         
-        return encoding["input_ids"].to(self.device)
+        return encoding["input_ids"].to(self.device), encoding["attention_mask"].to(self.device)
     
     def predict(self, text: str, return_probs: bool = False) -> Dict[str, any]:
         """
@@ -165,29 +178,33 @@ class DistilBertClassifier:
         """
         try:
             # Preprocesar
-            input_ids = self._preprocess(text)
-            
+            input_ids, attention_mask = self._preprocess(text)
+            non_pad_tokens = attention_mask.sum().item()
+            print(f"  [DistilBERT] Prompt: \"{text[:80]}{'...' if len(text) > 80 else ''}\"")
+            print(f"  [DistilBERT] Tokens reales: {int(non_pad_tokens)}/{self.max_length} (padding: {self.max_length - int(non_pad_tokens)})")
+
             # Inferencia
             with torch.no_grad():
-                outputs = self.model(input_ids)
+                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
                 logits = outputs.logits
-                
+
                 # Softmax para obtener probabilidades
                 probs = torch.softmax(logits, dim=-1)
                 probs = probs.cpu().numpy()[0]
-                
+
                 # Obtener prediccion
                 pred_idx = torch.argmax(logits, dim=-1).item()
                 label = self.label_map[pred_idx]
                 confidence = float(probs[pred_idx])
-                
+
                 # Score: probabilidad de ser injection (clase 1)
                 injection_score = float(probs[1])
-                
+
                 # Decidir si escalar: si confianza es baja O si es injection con alta confianza
                 # Escalamos siempre si es ambiguo (confianza < threshold)
                 # O si es claramente injection pero queremos confirmar con Capa 3
                 should_escalate = confidence < self.escalate_threshold
+                print(f"  [DistilBERT] Probs: benign={probs[0]:.4f}  injection={probs[1]:.4f}  |  label={label}  conf={confidence:.4f}  escalate={should_escalate}")
                 
                 # WORKAROUND TEMPORAL: Si el modelo está prediciendo todo como injection
                 # con confianza muy alta (ej. > 0.95), escalamos para validar con Capa 3

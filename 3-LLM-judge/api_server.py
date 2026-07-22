@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Optional
 
 # Configuracion
-DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
+DEFAULT_MODEL_PATH = "./models/distilbert_sentinel/checkpoint-22797"
 DEFAULT_PORT = 8000
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
@@ -156,8 +156,16 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
     async def detect_prompt(request: PromptRequest, req: Request):
         """Analiza un prompt para detectar si contiene inyeccion de instrucciones."""
         start_time = time.time()
-        
+
         try:
+<<<<<<< HEAD
+=======
+            print(f"\n{'='*60}")
+            print(f"[API] Nuevo request - Prompt: \"{request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}\"")
+            print(f"{'='*60}")
+
+            # Ejecutar pipeline
+>>>>>>> 1a7994579ae0c5d742684107453c8f3232803a4a
             result = run_pipeline(request.prompt, api_key)
             
             processing_time = time.time() - start_time
@@ -180,6 +188,20 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
                 f"Time: {processing_time:.2f}s"
             )
             
+<<<<<<< HEAD
+=======
+            # Añadir tiempo a la respuesta
+            result["processing_time"] = round(processing_time, 4)
+
+            print(f"[API] Veredicto: {result['final_verdict']}", end="")
+            if result['blocked_at_layer']:
+                print(f" (bloqueado en capa {result['blocked_at_layer']})")
+            else:
+                print(" (limpio)")
+            print(f"[API] Tiempo total: {processing_time:.2f}s")
+            print(f"{'='*60}\n")
+
+>>>>>>> 1a7994579ae0c5d742684107453c8f3232803a4a
             return result
             
         except Exception as e:
