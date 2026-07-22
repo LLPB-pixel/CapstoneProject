@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  prompt-injection-detector:
+  prompt-guard:
     build: .
-    container_name: prompt-injection-detector
+    container_name: prompt-guard
     ports:
       - "8000:8000"  # FastAPI backend
     environment:

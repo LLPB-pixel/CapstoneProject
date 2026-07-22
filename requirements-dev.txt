@@ -1,4 +1,4 @@
-# Development requirements for Prompt Injection Detection System
+# Development requirements for Prompt Guard
 # Includes all production dependencies plus dev-specific packages
 
 # Production dependencies

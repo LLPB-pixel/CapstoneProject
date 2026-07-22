@@ -1,4 +1,4 @@
-# Production requirements for Prompt Injection Detection System
+# Production requirements for Prompt Guard
 # Minimal dependencies for running the API server and pipeline
 
 # API Framework

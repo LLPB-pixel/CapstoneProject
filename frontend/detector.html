@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detector de Prompts - Prompt Sentinel</title>
+    <title>Detector de Prompts - Prompt Guard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -589,7 +589,7 @@
             <a href="/" class="sidebar-logo">
                 <i class="fas fa-shield-halved"></i>
                 <div>
-                    <h1>Prompt Sentinel</h1>
+                    <h1>Prompt Guard</h1>
                     <span>Security for LLMs</span>
                 </div>
             </a>
@@ -622,7 +622,7 @@
             <a href="/login" onclick="logout()" style="color:#ef4444;text-decoration:none;font-weight:600;font-size:0.8rem;">
                 <i class="fas fa-sign-out-alt"></i> Cerrar sesión
             </a>
-            Prompt Sentinel v1.0 &mdash; Capstone Project
+            Prompt Guard v1.0 &mdash; Capstone Project
         </div>
     </aside>
 
@@ -997,7 +997,7 @@
 
             // Notificar al dashboard para que se actualice
             try {
-                new BroadcastChannel('prompt-sentinel').postMessage({ type: 'new-analysis' });
+                new BroadcastChannel('prompt-guard').postMessage({ type: 'new-analysis' });
             } catch (e) {}
         }
 

@@ -1,4 +1,4 @@
-# Prompt Injection Detection System - Docker Deployment
+# Prompt Guard - Docker Deployment
 
 ## Quick Start
 
@@ -6,21 +6,21 @@
 
 ```bash
 # Build the Docker image
-docker build -t prompt-injection-detector .
+docker build -t prompt-guard .
 
 # Run with demo mode (no API key needed)
 docker run -d \
   -p 8000:8000 \
-  --name prompt-detector \
-  prompt-injection-detector
+  --name prompt-guard \
+  prompt-guard
 
 # Or with Mistral API key for full functionality
 docker run -d \
   -p 8000:8000 \
   -e MISTRAL_API_KEY="your_key_here" \
   -v /path/to/models:/app/models \
-  --name prompt-detector \
-  prompt-injection-detector
+  --name prompt-guard \
+  prompt-guard
 ```
 
 ### Using Docker Compose
@@ -63,24 +63,24 @@ volumes:
 
 1. **Build the image**:
    ```bash
-   docker build -t your-registry/prompt-injection-detector .
+   docker build -t your-registry/prompt-guard .
    ```
 
 2. **Push to your registry**:
    ```bash
-   docker push your-registry/prompt-injection-detector
+   docker push your-registry/prompt-guard
    ```
 
 3. **Deploy on CapRover**:
    - Create new app
    - Select custom image
-   - Enter: `your-registry/prompt-injection-detector`
+   - Enter: `your-registry/prompt-guard`
    - Set environment variable: `MISTRAL_API_KEY=your_key_here`
    - Add persistent storage for `/app/models`
    - Deploy
 
 4. **Upload models**:
-   - Use SFTP to upload models to `/var/lib/docker/volumes/caprover_prompt-injection-detector/_data/models/`
+   - Use SFTP to upload models to `/var/lib/docker/volumes/caprover_prompt-guard/_data/models/`
    - Or use CapRover's file manager
 
 ## Frontend Deployment
@@ -98,13 +98,13 @@ The frontend is static HTML/JS and can be deployed separately:
 
 ```bash
 # View logs
-docker logs prompt-detector
+docker logs prompt-guard
 
 # Check health
-docker exec prompt-detector curl http://localhost:8000/health
+docker exec prompt-guard curl http://localhost:8000/health
 
 # View resource usage
-docker stats prompt-detector
+docker stats prompt-guard
 ```
 
 ## Notes

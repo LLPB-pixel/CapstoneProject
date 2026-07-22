@@ -6,7 +6,7 @@
 set -e
 
 echo "=========================================="
-echo "  Prompt Sentinel - Demo Mode"
+echo "  Prompt Guard - Demo Mode"
 echo "=========================================="
 echo ""
 

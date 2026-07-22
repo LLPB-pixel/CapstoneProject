@@ -101,7 +101,7 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
     init_db()
     
     app = FastAPI(
-        title="Prompt Injection Detection API",
+        title="Prompt Guard API",
         description="API para detectar prompt injection en modelos de lenguaje",
         version="1.0.0",
         docs_url="/docs",

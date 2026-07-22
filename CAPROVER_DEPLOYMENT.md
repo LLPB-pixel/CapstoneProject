@@ -1,4 +1,4 @@
-# CapRover Deployment Guide
+# CapRover Deployment Guide - Prompt Guard
 
 ## 🚀 Quick Deployment
 
@@ -6,17 +6,17 @@
 
 ```bash
 # Build the Docker image
-docker build -t your-registry/prompt-injection-detector .
+docker build -t your-registry/prompt-guard .
 
 # Push to your registry
-docker push your-registry/prompt-injection-detector
+docker push your-registry/prompt-guard
 ```
 
 ### 2. Deploy on CapRover
 
 1. **Create new app** in CapRover dashboard
 2. **Select "Custom Image"** deployment method
-3. **Enter image name**: `your-registry/prompt-injection-detector`
+3. **Enter image name**: `your-registry/prompt-guard`
 4. **Set environment variable**:
    - Key: `MISTRAL_API_KEY`
    - Value: `your_mistral_api_key_here` (or leave empty for demo mode)
@@ -34,7 +34,7 @@ After deployment, upload your models via SFTP:
 sftp your-user@your-vps-ip
 
 # Navigate to the models directory
-cd /var/lib/docker/volumes/caprover_prompt-injection-detector/_data/models/
+cd /var/lib/docker/volumes/caprover_prompt-guard/_data/models/
 
 # Upload your models
 put -r ./distilbert_sentinel/
@@ -153,7 +153,7 @@ curl https://your-app.your-domain.com/health
 
 ## 🎉 Success!
 
-Your Prompt Injection Detection System is now deployed on CapRover! Access:
+Your Prompt Guard system is now deployed on CapRover! Access:
 
 - **API**: `https://your-app.your-domain.com`
 - **Docs**: `https://your-app.your-domain.com/docs`

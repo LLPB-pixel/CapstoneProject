@@ -1,4 +1,4 @@
-# Dockerfile for Prompt Injection Detection System
+# Dockerfile for Prompt Guard - AI Security System
 # Simple, production-ready image
 
 FROM python:3.11-slim
