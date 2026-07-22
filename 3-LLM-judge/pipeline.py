@@ -20,6 +20,7 @@ Ejemplo:
 
 import sys
 import json
+import os
 import argparse
 import time
 import logging
@@ -122,12 +123,19 @@ def layer2_filter(prompt, model_path="./models/distilbert_sentinel/checkpoint-22
 
 # Pipeline principal
 
-def run_pipeline(prompt, api_key):
+def run_pipeline(prompt, api_key, groq_key=None):
     """
     Ejecuta el pipeline completo de 3 capas.
     TODAS las capas se ejecutan SIEMPRE para permitir analisis de efectividad.
     Devuelve un diccionario con los resultados.
+    
+    Args:
+        prompt: Prompt a analizar
+        api_key: API Key de Mistral
+        groq_key: API Key de Groq (fallback si Mistral falla). Si es None, lee GROQ_API_KEY del env.
     """
+    if groq_key is None:
+        groq_key = os.environ.get("GROQ_API_KEY")
     results = {
         'prompt': prompt,
         'final_verdict': 'CLEAN',
@@ -172,9 +180,9 @@ def run_pipeline(prompt, api_key):
     else:
         print(f"  -> Capa 2: Estado desconocido - {l2.get('note', l2.get('error', 'N/A'))}")
     
-    # --- Capa 3: Mistral API (SIEMPRE se ejecuta) ---
-    print(f"\n[Capa 3] Analizando con Mistral API...")
-    l3 = evaluate_prompt_security(prompt, api_key)
+    # --- Capa 3: Mistral/Groq API (SIEMPRE se ejecuta) ---
+    print(f"\n[Capa 3] Analizando con LLM-Judge (Mistral -> Groq fallback)...")
+    l3 = evaluate_prompt_security(prompt, api_key, groq_key=groq_key)
     results['layer3'] = l3
     results['layer3_detected'] = not l3.get('is_good', True) or l3.get('score', 10) < LLM_THRESHOLD
     print(f"  is_good: {l3['is_good']}, score: {l3['score']}, evaluacion: {l3['evaluation']}")

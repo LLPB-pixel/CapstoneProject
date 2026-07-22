@@ -45,6 +45,7 @@ FRONTEND_DASHBOARD_PATH = FRONTEND_DIR / "dashboard.html"
 # Variables globales para el servidor (usadas con reload)
 SERVER_API_KEY = None
 SERVER_MODEL_PATH = None
+SERVER_GROQ_KEY = None
 
 # Configurar logging
 logging.basicConfig(
@@ -66,7 +67,8 @@ def set_model_path(path: str):
     pipe_module.MODEL_PATH = path
 
 
-def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
+def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
+               groq_key: Optional[str] = None):
     """Crea la aplicacion FastAPI."""
     try:
         from fastapi import FastAPI, HTTPException, Request, Query
@@ -78,11 +80,13 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
         raise
 
     # Obtener parametros de variables globales si no se proporcionan
-    global SERVER_API_KEY, SERVER_MODEL_PATH
+    global SERVER_API_KEY, SERVER_MODEL_PATH, SERVER_GROQ_KEY
     if api_key is None:
         api_key = SERVER_API_KEY
     if model_path is None:
         model_path = SERVER_MODEL_PATH
+    if groq_key is None:
+        groq_key = SERVER_GROQ_KEY or os.environ.get("GROQ_API_KEY")
     
     # Configurar ruta del modelo
     set_model_path(model_path)
@@ -163,7 +167,7 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
             print(f"{'='*60}")
 
             # Ejecutar pipeline
-            result = run_pipeline(request.prompt, api_key)
+            result = run_pipeline(request.prompt, api_key, groq_key=groq_key)
             
             processing_time = time.time() - start_time
             result["processing_time"] = round(processing_time, 4)
@@ -281,7 +285,8 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
     return app
 
 
-def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT_MODEL_PATH):
+def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT_MODEL_PATH,
+               groq_key: Optional[str] = None):
     """Ejecuta el servidor API."""
     try:
         import uvicorn
@@ -289,12 +294,17 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
         logger.error("Uvicorn no esta instalado. Instalalo con: pip install uvicorn")
         return
 
-    global SERVER_API_KEY, SERVER_MODEL_PATH
+    global SERVER_API_KEY, SERVER_MODEL_PATH, SERVER_GROQ_KEY
     SERVER_API_KEY = api_key
     SERVER_MODEL_PATH = model_path
+    SERVER_GROQ_KEY = groq_key or os.environ.get("GROQ_API_KEY")
     
     logger.info(f"Iniciando servidor API en http://localhost:{port}")
     logger.info(f"Modelo DistilBERT: {model_path}")
+    if SERVER_GROQ_KEY:
+        logger.info("Groq API: Configurada (fallback para Mistral)")
+    else:
+        logger.warning("Groq API: No configurada (sin fallback si Mistral falla)")
     logger.info("Landing page: http://localhost:{}/".format(port))
     logger.info("Detector:      http://localhost:{}/detector".format(port))
     logger.info("Dashboard:     http://localhost:{}/dashboard".format(port))
@@ -334,7 +344,12 @@ def main():
     )
     
     args = parser.parse_args()
-    run_server(args.api_key, args.port, args.model_path)
+
+    # Leer GROQ_API_KEY del entorno
+    groq_key = os.environ.get("GROQ_API_KEY")
+
+    # Iniciar servidor
+    run_server(args.api_key, args.port, args.model_path, groq_key=groq_key)
 
 
 if __name__ == "__main__":
