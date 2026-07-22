@@ -29,10 +29,17 @@ COPY . /app
 
 # Create a non-root user
 RUN useradd -m -u 1000 -g 1000 appuser
+
+# Create data directory for SQLite database
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+
 USER appuser
 
 # Expose ports
 EXPOSE 8000  # FastAPI backend
+
+# Volume for persistent attack database
+VOLUME /app/data
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s \

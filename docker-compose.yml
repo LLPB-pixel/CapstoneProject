@@ -8,11 +8,17 @@ services:
       - "8000:8000"  # FastAPI backend
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-demo}
+      - ATTACKS_DB_PATH=/app/data/attacks.db
     volumes:
       - ./models:/app/models  # Mount models directory
+      - attacks_data:/app/data  # Persistent attack database
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+volumes:
+  attacks_data:
+    driver: local

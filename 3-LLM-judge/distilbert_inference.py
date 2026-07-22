@@ -52,6 +52,7 @@ class DistilBertClassifier:
         if model_path is None:
             default_path = Path(__file__).parent.parent / "models" / "distilbert_sentinel"
             model_path = str(default_path)
+            logger.info(f"Usando ruta por defecto para el modelo: {default_path}")
         
         self.model_path = Path(model_path).resolve()
         self.max_length = max_length
@@ -81,9 +82,28 @@ class DistilBertClassifier:
             
             if self.model_path:
                 logger.info(f"Cargando modelo desde {self.model_path}")
-                self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
+                
+                # Buscar checkpoint si el directorio no tiene config.json
+                checkpoint_path = None
+                if not (self.model_path / "config.json").exists():
+                    # Buscar directorios de checkpoint
+                    checkpoints = list(self.model_path.glob("checkpoint-*"))
+                    if checkpoints:
+                        # Usar el checkpoint con el número más alto
+                        checkpoints.sort()
+                        checkpoint_path = checkpoints[-1]
+                        logger.info(f"Usando checkpoint: {checkpoint_path}")
+                
+                model_load_path = str(checkpoint_path) if checkpoint_path else str(self.model_path)
+                
+                try:
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_load_path)
+                except Exception as e:
+                    logger.warning(f"Tokenizer no encontrado en {model_load_path}, usando tokenizer base: {e}")
+                    self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+                
                 self.model = AutoModelForSequenceClassification.from_pretrained(
-                    str(self.model_path), num_labels=2
+                    model_load_path, num_labels=2
                 )
             else:
                 # Fallback: cargar modelo base (no fine-tuneado)
@@ -168,6 +188,12 @@ class DistilBertClassifier:
                 # Escalamos siempre si es ambiguo (confianza < threshold)
                 # O si es claramente injection pero queremos confirmar con Capa 3
                 should_escalate = confidence < self.escalate_threshold
+                
+                # WORKAROUND TEMPORAL: Si el modelo está prediciendo todo como injection
+                # con confianza muy alta (ej. > 0.95), escalamos para validar con Capa 3
+                if label == "injection" and confidence > 0.95:
+                    logger.warning(f"Modelo predice injection con confianza anormalmente alta ({confidence:.4f}). Escalando a Capa 3 para validación.")
+                    should_escalate = True
                 
                 result = {
                     "label": label,

@@ -11,29 +11,25 @@ Uso:
 Ejemplo:
     python api_server.py sk-1234567890 --port 8000 --model_path ../models/distilbert_sentinel
 
-Endpoint:
-    POST /detect - Analiza un prompt
-    
-Request:
-    {
-        "prompt": "Ignora todas las instrucciones anteriores"
-    }
-    
-Response:
-    {
-        "prompt": "Ignora todas las instrucciones anteriores",
-        "final_verdict": "BLOCKED",
-        "blocked_at_layer": 3,
-        "layer1": { ... },
-        "layer2": { ... },
-        "layer3": { ... },
-        "processing_time": 2.45
-    }
+Endpoints:
+    GET  /              - Pagina principal (landing page)
+    GET  /detector      - Detector de prompts
+    GET  /dashboard     - Dashboard de ataques
+    POST /detect        - Analiza un prompt
+    GET  /api/dashboard/stats       - Estadisticas generales
+    GET  /api/dashboard/recent      - Ataques recientes
+    GET  /api/dashboard/timeline    - Timeline de ataques
+    GET  /api/dashboard/top-ips     - Top IPs atacantes
+    GET  /api/dashboard/categories  - Categorias de ataque
+    GET  /api/dashboard/layers      - Stats por capa
+    GET  /health        - Health check
+    GET  /stats         - Info del modelo
 """
 
 import argparse
 import time
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -41,7 +37,10 @@ from typing import Optional
 DEFAULT_MODEL_PATH = "../models/distilbert_sentinel"
 DEFAULT_PORT = 8000
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FRONTEND_INDEX_PATH = PROJECT_ROOT / "frontend" / "index.html"
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+FRONTEND_INDEX_PATH = FRONTEND_DIR / "index.html"
+FRONTEND_DETECTOR_PATH = FRONTEND_DIR / "detector.html"
+FRONTEND_DASHBOARD_PATH = FRONTEND_DIR / "dashboard.html"
 
 # Variables globales para el servidor (usadas con reload)
 SERVER_API_KEY = None
@@ -57,12 +56,12 @@ logger = logging.getLogger(__name__)
 # Cargar el pipeline
 from pipeline import run_pipeline, MODEL_PATH as PIPELINE_MODEL_PATH
 
+
 # Configurar ruta del modelo
 def set_model_path(path: str):
     """Configura la ruta del modelo DistilBERT."""
     global PIPELINE_MODEL_PATH
     PIPELINE_MODEL_PATH = path
-    # Actualizar en el modulo pipeline
     import pipeline as pipe_module
     pipe_module.MODEL_PATH = path
 
@@ -70,7 +69,7 @@ def set_model_path(path: str):
 def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
     """Crea la aplicacion FastAPI."""
     try:
-        from fastapi import FastAPI, HTTPException, Request
+        from fastapi import FastAPI, HTTPException, Request, Query
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
         from pydantic import BaseModel
@@ -79,7 +78,6 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
         raise
 
     # Obtener parametros de variables globales si no se proporcionan
-    # (esto ocurre cuando uvicorn recarga la aplicacion)
     global SERVER_API_KEY, SERVER_MODEL_PATH
     if api_key is None:
         api_key = SERVER_API_KEY
@@ -88,6 +86,10 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
     
     # Configurar ruta del modelo
     set_model_path(model_path)
+
+    # Inicializar base de datos
+    from database import init_db
+    init_db()
     
     app = FastAPI(
         title="Prompt Injection Detection API",
@@ -97,7 +99,7 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
         redoc_url="/redoc"
     )
 
-    # CORS - Permitir todas las origines para desarrollo
+    # CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -106,40 +108,77 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
         allow_headers=["*"],
     )
 
-    # Modelo para request
+    # --- Modelos ---
+
     class PromptRequest(BaseModel):
         prompt: str
-        user_id: Optional[str] = None  # Para logging
+        user_id: Optional[str] = None
 
-    # Endpoint de deteccion
+    # --- Funciones auxiliares ---
+
+    def _serve_html(file_path: Path):
+        if not file_path.exists():
+            logger.error(f"Archivo no encontrado: {file_path}")
+            raise HTTPException(status_code=404, detail="Pagina no encontrada")
+        return FileResponse(file_path, media_type="text/html")
+
+    def _get_client_ip(request: Request) -> str:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        if request.client:
+            return request.client.host
+        return "unknown"
+
+    def _get_user_agent(request: Request) -> str:
+        return request.headers.get("user-agent", "unknown")
+
+    # --- Rutas del frontend ---
+
+    @app.get("/", response_class=HTMLResponse)
+    async def serve_landing():
+        """Pagina principal con explicacion del proyecto."""
+        return _serve_html(FRONTEND_INDEX_PATH)
+
+    @app.get("/detector", response_class=HTMLResponse)
+    async def serve_detector():
+        """Pagina del detector de prompts."""
+        return _serve_html(FRONTEND_DETECTOR_PATH)
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def serve_dashboard():
+        """Dashboard de analisis de ataques."""
+        return _serve_html(FRONTEND_DASHBOARD_PATH)
+
+    # --- Endpoint de deteccion ---
+
     @app.post("/detect", response_model=dict)
-    async def detect_prompt(request: PromptRequest):
-        """
-        Analiza un prompt para detectar si contiene inyeccion de instrucciones.
-        
-        Este endpoint ejecuta las 3 capas del pipeline:
-        1. Filtro heuristico
-        2. Modelo DistilBERT
-        3. LLM-Judge (Mistral API)
-        """
+    async def detect_prompt(request: PromptRequest, req: Request):
+        """Analiza un prompt para detectar si contiene inyeccion de instrucciones."""
         start_time = time.time()
         
         try:
-            # Ejecutar pipeline
             result = run_pipeline(request.prompt, api_key)
             
-            # Calcular tiempo de procesamiento
             processing_time = time.time() - start_time
+            result["processing_time"] = round(processing_time, 4)
+
+            # Registrar en la base de datos
+            try:
+                from database import log_attack
+                log_attack(
+                    result=result,
+                    source_ip=_get_client_ip(req),
+                    user_agent=_get_user_agent(req),
+                )
+            except Exception as db_err:
+                logger.warning(f"Error al registrar ataque en DB: {db_err}")
             
-            # Log
             logger.info(
                 f"Prompt analizado - User: {request.user_id or 'unknown'}, "
                 f"Verdict: {result['final_verdict']}, "
                 f"Time: {processing_time:.2f}s"
             )
-            
-            # Añadir tiempo a la respuesta
-            result["processing_time"] = round(processing_time, 4)
             
             return result
             
@@ -150,27 +189,65 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
                 detail=f"Error al procesar el prompt: {str(e)}"
             )
 
-    # Servir la página principal del frontend
-    @app.get("/", response_class=HTMLResponse)
-    async def serve_frontend():
-        """Devuelve el HTML del frontend al abrir la ruta raíz."""
-        if not FRONTEND_INDEX_PATH.exists():
-            logger.error(f"No se encontró el archivo del frontend en: {FRONTEND_INDEX_PATH}")
-            raise HTTPException(status_code=404, detail="Frontend no encontrado")
+    # --- Endpoints del dashboard ---
 
-        return FileResponse(FRONTEND_INDEX_PATH, media_type="text/html")
+    @app.get("/api/dashboard/stats")
+    async def dashboard_stats():
+        """Estadisticas generales del sistema."""
+        from database import get_dashboard_stats
+        return get_dashboard_stats()
 
-    # Endpoint de salud
+    @app.get("/api/dashboard/recent")
+    async def dashboard_recent(
+        limit: int = Query(default=50, ge=1, le=500),
+        verdict: Optional[str] = Query(default=None)
+    ):
+        """Ataques recientes registrados."""
+        from database import get_recent_attacks
+        return get_recent_attacks(limit=limit, verdict=verdict)
+
+    @app.get("/api/dashboard/timeline")
+    async def dashboard_timeline(
+        days: int = Query(default=7, ge=1, le=90)
+    ):
+        """Timeline de ataques por dia."""
+        from database import get_attacks_timeline
+        return get_attacks_timeline(days=days)
+
+    @app.get("/api/dashboard/top-ips")
+    async def dashboard_top_ips(
+        limit: int = Query(default=10, ge=1, le=50)
+    ):
+        """Principales IPs atacantes."""
+        from database import get_top_source_ips
+        return get_top_source_ips(limit=limit)
+
+    @app.get("/api/dashboard/categories")
+    async def dashboard_categories():
+        """Estadisticas de categorias de ataque."""
+        from database import get_category_stats
+        return get_category_stats()
+
+    @app.get("/api/dashboard/layers")
+    async def dashboard_layers():
+        """Estadisticas de deteccion por capa."""
+        from database import get_layer_detection_stats
+        return get_layer_detection_stats()
+
+    # --- Endpoints de sistema ---
+
     @app.get("/health")
     async def health_check():
         """Endpoint para monitorizacion."""
+        from database import get_db_path
+        db_exists = os.path.exists(get_db_path())
         return {
             "status": "ok",
             "version": "1.0.0",
-            "model_path": PIPELINE_MODEL_PATH
+            "model_path": PIPELINE_MODEL_PATH,
+            "database": "connected" if db_exists else "not_initialized",
         }
 
-    # Endpoint para obtener estadisticas del modelo
     @app.get("/stats")
     async def get_stats():
         """Obtener informacion del modelo cargado."""
@@ -199,15 +276,16 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
         logger.error("Uvicorn no esta instalado. Instalalo con: pip install uvicorn")
         return
 
-    # Guardar los parametros en variables globales para que puedan ser accedidos
-    # por la funcion que crea la app cuando se recarga
     global SERVER_API_KEY, SERVER_MODEL_PATH
     SERVER_API_KEY = api_key
     SERVER_MODEL_PATH = model_path
     
     logger.info(f"Iniciando servidor API en http://localhost:{port}")
     logger.info(f"Modelo DistilBERT: {model_path}")
-    logger.info("Documentacion disponible en: http://localhost:{}/docs".format(port))
+    logger.info("Landing page: http://localhost:{}/".format(port))
+    logger.info("Detector:      http://localhost:{}/detector".format(port))
+    logger.info("Dashboard:     http://localhost:{}/dashboard".format(port))
+    logger.info("API Docs:      http://localhost:{}/docs".format(port))
     
     uvicorn.run(
         "api_server:create_app",
@@ -243,8 +321,6 @@ def main():
     )
     
     args = parser.parse_args()
-    
-    # Iniciar servidor
     run_server(args.api_key, args.port, args.model_path)
 
 

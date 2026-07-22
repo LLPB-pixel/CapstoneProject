@@ -6,13 +6,13 @@
 set -e
 
 echo "=========================================="
-echo "  Prompt Injection Detector - Demo Mode"
+echo "  Prompt Sentinel - Demo Mode"
 echo "=========================================="
 echo ""
 
 if [ -z "$1" ]; then
-    echo "⚠️  No se proporcionó API Key de Mistral"
-    echo "    Usando modo SIMULACIÓN (sin backend real)"
+    echo "No se proporciono API Key de Mistral"
+    echo "Usando modo SIMULACION (sin backend real)"
     echo ""
     echo "Para usar el backend real:"
     echo "  ./run_demo.sh TU_API_KEY_MISTRAL"
@@ -22,15 +22,19 @@ if [ -z "$1" ]; then
     echo "Iniciando servidor web en http://localhost:3000"
     echo "(Abre este enlace en tu navegador)"
     echo ""
+    echo "  Landing:  http://localhost:3000/"
+    echo "  Detector: http://localhost:3000/detector.html"
+    echo "  Dashboard: http://localhost:3000/dashboard.html"
+    echo ""
     
     cd frontend
     python3 -m http.server 3000 --bind 0.0.0.0
 else
     API_KEY=$1
-    echo "✅ API Key proporcionada"
+    echo "API Key proporcionada"
     echo ""
     
-    # Verificar si FastAPI está instalado
+    # Verificar si FastAPI esta instalado
     if python3 -c "import fastapi" 2>/dev/null; then
         echo "Iniciando backend con FastAPI..."
         cd 3-LLM-judge
@@ -40,18 +44,20 @@ else
         
         echo "Backend iniciado en http://localhost:8000 (PID: $BACKEND_PID)"
         echo ""
-        
-        echo "Iniciando frontend en http://localhost:3000"
-        cd ../frontend
-        python3 -m http.server 3000 --bind 0.0.0.0
-        
-        # Matar backend al salir
-        kill $BACKEND_PID 2>/dev/null || true
-    else
-        echo "⚠️  FastAPI no está instalado"
-        echo "    Instálalo con: pip install fastapi uvicorn"
+        echo "  Landing:  http://localhost:8000/"
+        echo "  Detector: http://localhost:8000/detector"
+        echo "  Dashboard: http://localhost:8000/dashboard"
+        echo "  API Docs: http://localhost:8000/docs"
         echo ""
-        echo "Usando modo SIMULACIÓN (solo frontend)"
+        
+        # Esperar a que el usuario cierre el servidor
+        echo "Presiona Ctrl+C para detener el servidor..."
+        wait $BACKEND_PID
+    else
+        echo "FastAPI no esta instalado"
+        echo "Instalalo con: pip install fastapi uvicorn"
+        echo ""
+        echo "Usando modo SIMULACION (solo frontend)"
         python3 -m http.server 3000 --bind 0.0.0.0
     fi
 fi
