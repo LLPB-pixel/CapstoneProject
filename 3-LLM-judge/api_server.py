@@ -158,14 +158,11 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
         start_time = time.time()
 
         try:
-<<<<<<< HEAD
-=======
             print(f"\n{'='*60}")
             print(f"[API] Nuevo request - Prompt: \"{request.prompt[:100]}{'...' if len(request.prompt) > 100 else ''}\"")
             print(f"{'='*60}")
 
             # Ejecutar pipeline
->>>>>>> 1a7994579ae0c5d742684107453c8f3232803a4a
             result = run_pipeline(request.prompt, api_key)
             
             processing_time = time.time() - start_time
@@ -187,11 +184,6 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
                 f"Verdict: {result['final_verdict']}, "
                 f"Time: {processing_time:.2f}s"
             )
-            
-<<<<<<< HEAD
-=======
-            # Añadir tiempo a la respuesta
-            result["processing_time"] = round(processing_time, 4)
 
             print(f"[API] Veredicto: {result['final_verdict']}", end="")
             if result['blocked_at_layer']:
@@ -201,7 +193,6 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None):
             print(f"[API] Tiempo total: {processing_time:.2f}s")
             print(f"{'='*60}\n")
 
->>>>>>> 1a7994579ae0c5d742684107453c8f3232803a4a
             return result
             
         except Exception as e:

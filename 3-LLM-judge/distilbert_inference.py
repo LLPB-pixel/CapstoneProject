@@ -91,7 +91,6 @@ class DistilBertClassifier:
             
             if self.model_path:
                 logger.info(f"Cargando modelo desde {self.model_path}")
-<<<<<<< HEAD
                 
                 # Buscar checkpoint si el directorio no tiene config.json
                 checkpoint_path = None
@@ -112,9 +111,6 @@ class DistilBertClassifier:
                     logger.warning(f"Tokenizer no encontrado en {model_load_path}, usando tokenizer base: {e}")
                     self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
                 
-=======
-                self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
->>>>>>> 1a7994579ae0c5d742684107453c8f3232803a4a
                 self.model = AutoModelForSequenceClassification.from_pretrained(
                     model_load_path, num_labels=2
                 )
