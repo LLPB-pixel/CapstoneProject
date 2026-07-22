@@ -1,0 +1,32 @@
+# Development requirements for Prompt Injection Detection System
+# Includes all production dependencies plus dev-specific packages
+
+# Production dependencies
+-r requirements-prod.txt
+
+# Testing
+pytest==8.3.2
+pytest-cov==5.0.0
+
+# Type checking
+mypy==1.11.2
+
+# Linting and formatting
+ruff==0.5.7
+black==24.8.0
+isort==5.13.2
+
+# Jupyter for notebooks (if needed for data exploration)
+# jupyter==1.0.0
+# notebook==7.2.1
+
+# Visualization (for analysis notebooks)
+# matplotlib==3.10.8
+# seaborn==0.13.2
+
+# WandB for experiment tracking (optional)
+# wandb==0.27.2
+
+# Development utilities
+tqdm==4.68.3
+python-dotenv==1.0.1

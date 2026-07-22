@@ -1,0 +1,33 @@
+# Production requirements for Prompt Injection Detection System
+# Minimal dependencies for running the API server and pipeline
+
+# API Framework
+fastapi==2.13.4
+uvicorn[standard]==0.28.1
+python-multipart==0.0.6
+
+# LLM and Model Inference
+mistralai==2.7.0
+requests==2.33.1
+httpx==0.28.1
+
+# Deep Learning
+torch==2.13.0
+transformers==5.13.1
+accelerate==1.14.0
+
+# Data processing (used in tests and some pipeline components)
+pandas==3.0.2
+numpy>=2.3.2
+scikit-learn==1.8.0
+
+# Security / Auth (for JWT tokens)
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Pydantic for data validation
+pydantic==2.13.4
+pydantic-core==2.46.4
+
+# Logging and utilities
+python-json-logger==2.0.7
