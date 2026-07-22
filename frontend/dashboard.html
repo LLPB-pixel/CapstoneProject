@@ -879,7 +879,12 @@
                 + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         }
 
-        loadDashboard();
+        async function initDashboard() {
+            await fetch(getApiUrl('/api/dashboard/clear'), { method: 'DELETE' });
+            loadDashboard();
+        }
+
+        initDashboard();
         setInterval(loadDashboard, 30000);
     </script>
 </body>

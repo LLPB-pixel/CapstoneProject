@@ -251,6 +251,13 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
         from database import get_layer_detection_stats
         return get_layer_detection_stats()
 
+    @app.delete("/api/dashboard/clear")
+    async def clear_dashboard():
+        """Borra todos los registros del dashboard."""
+        from database import clear_attacks
+        clear_attacks()
+        return {"status": "ok", "message": "Dashboard limpiado"}
+
     # --- Endpoints de sistema ---
 
     @app.get("/health")

@@ -231,3 +231,13 @@ def get_attacks_timeline(days: int = 7, db_path: Optional[str] = None) -> List[D
         return [dict(r) for r in rows]
     finally:
         conn.close()
+
+
+def clear_attacks(db_path: Optional[str] = None):
+    conn = get_connection(db_path)
+    try:
+        conn.execute("DELETE FROM attacks")
+        conn.commit()
+        logger.info("Tabla de ataques limpiada")
+    finally:
+        conn.close()
