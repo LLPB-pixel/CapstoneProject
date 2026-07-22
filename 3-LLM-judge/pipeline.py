@@ -184,12 +184,17 @@ def run_pipeline(prompt, api_key, groq_key=None):
     print(f"\n[Capa 3] Analizando con LLM-Judge (Mistral -> Groq fallback)...")
     l3 = evaluate_prompt_security(prompt, api_key, groq_key=groq_key)
     results['layer3'] = l3
-    results['layer3_detected'] = not l3.get('is_good', True) or l3.get('score', 10) < LLM_THRESHOLD
-    print(f"  is_good: {l3['is_good']}, score: {l3['score']}, evaluacion: {l3['evaluation']}")
-    if not l3.get('is_good', True) or l3.get('score', 10) < LLM_THRESHOLD:
-        print("  -> Capa 3: DETECTADO como inseguro")
+
+    if l3.get('unavailable'):
+        results['layer3_detected'] = False
+        print(f"  Servicio no disponible. El veredicto de la Capa 3 no contara.")
     else:
-        print("  -> Capa 3: Limpio")
+        results['layer3_detected'] = not l3.get('is_good', True) or l3.get('score', 10) < LLM_THRESHOLD
+        print(f"  is_good: {l3['is_good']}, score: {l3['score']}, evaluacion: {l3['evaluation']}")
+        if not l3.get('is_good', True) or l3.get('score', 10) < LLM_THRESHOLD:
+            print("  -> Capa 3: DETECTADO como inseguro")
+        else:
+            print("  -> Capa 3: Limpio")
     
     # --- Decidir veredicto final (basado en cualquier capa que haya detectado) ---
     if results['layer1_detected']:

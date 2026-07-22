@@ -474,7 +474,7 @@
         </div>
         <nav class="sidebar-nav">
             <div class="nav-section">
-                <div class="nav-section-title">Navegacion</div>
+                <div class="nav-section-title">Navegación</div>
                 <a href="/" class="nav-item">
                     <i class="fas fa-home"></i> Inicio
                 </a>
@@ -495,7 +495,11 @@
                 </a>
             </div>
         </nav>
-        <div class="sidebar-footer">
+        <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:8px;">
+            <span id="userLabel" style="font-size:0.8rem;"></span>
+            <a href="/login" onclick="logout()" style="color:var(--danger);text-decoration:none;font-weight:600;font-size:0.8rem;">
+                <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+            </a>
             Prompt Sentinel v1.0 &mdash; Capstone Project
         </div>
     </aside>
@@ -569,13 +573,13 @@
 
             <div class="charts-row fade-in">
                 <div class="chart-card">
-                    <h3><i class="fas fa-server"></i> Deteccion por Capa</h3>
+                    <h3><i class="fas fa-server"></i> Detección por Capa</h3>
                     <div class="chart-container">
                         <canvas id="layerChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3><i class="fas fa-tags"></i> Categorias de Ataque</h3>
+                    <h3><i class="fas fa-tags"></i> Categorías de Ataque</h3>
                     <div class="chart-container">
                         <canvas id="categoryChart"></canvas>
                     </div>
@@ -586,9 +590,14 @@
             <div class="table-card fade-in">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <h3 style="margin-bottom: 0;"><i class="fas fa-list"></i> Ataques Recientes</h3>
-                    <button class="refresh-btn" onclick="loadDashboard()">
-                        <i class="fas fa-sync-alt"></i> Actualizar
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="refresh-btn" onclick="loadDashboard()">
+                            <i class="fas fa-sync-alt"></i> Actualizar
+                        </button>
+                        <button class="refresh-btn" style="background: var(--danger);" onclick="confirmClearHistory()">
+                            <i class="fas fa-trash"></i> Borrar historial
+                        </button>
+                    </div>
                 </div>
                 <div class="table-wrapper">
                     <table>
@@ -607,7 +616,7 @@
                                 <td colspan="6">
                                     <div class="empty-state">
                                         <i class="fas fa-inbox"></i>
-                                        <p>No hay ataques registrados todavia</p>
+                                        <p>No hay ataques registrados todavía</p>
                                     </div>
                                 </td>
                             </tr>
@@ -623,7 +632,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Direccion IP</th>
+                                <th>Dirección IP</th>
                                 <th>Total Peticiones</th>
                                 <th>Bloqueados</th>
                                 <th>Tasa de Bloqueo</th>
@@ -634,7 +643,7 @@
                                 <td colspan="4">
                                     <div class="empty-state">
                                         <i class="fas fa-globe"></i>
-                                        <p>No hay datos de IPs todavia</p>
+                                        <p>No hay datos de IPs todavía</p>
                                     </div>
                                 </td>
                             </tr>
@@ -652,19 +661,54 @@
 
         let timelineChart, verdictChart, layerChart, categoryChart;
 
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function getUser() {
+            try {
+                return JSON.parse(localStorage.getItem('user'));
+            } catch {
+                return null;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
+
         function getApiUrl(path) {
             return API_BASE + path;
         }
 
-        async function fetchJSON(path) {
+        async function fetchJSON(path, options = {}) {
             try {
-                const resp = await fetch(getApiUrl(path));
+                const resp = await fetch(getApiUrl(path), {
+                    ...options,
+                    headers: {
+                        'Authorization': 'Bearer ' + getToken(),
+                        ...(options.headers || {})
+                    }
+                });
+                if (resp.status === 401) {
+                    window.location.href = '/login';
+                    return null;
+                }
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 return await resp.json();
             } catch (e) {
                 console.error(`Error fetching ${path}:`, e);
                 return null;
             }
+        }
+
+        async function confirmClearHistory() {
+            if (!confirm('¿Seguro que quieres borrar todo tu historial de prompts? Esta acción no se puede deshacer.')) {
+                return;
+            }
+            await fetchJSON('/api/dashboard/clear', { method: 'DELETE' });
+            loadDashboard();
         }
 
         async function loadDashboard() {
@@ -791,7 +835,7 @@
             layerChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Capa 1: Heuristico', 'Capa 2: DistilBERT', 'Capa 3: LLM-Judge'],
+                    labels: ['Capa 1: Heurístico', 'Capa 2: DistilBERT', 'Capa 3: LLM-Judge'],
                     datasets: [{
                         label: 'Detecciones',
                         data: [
@@ -879,13 +923,22 @@
                 + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         }
 
-        async function initDashboard() {
-            await fetch(getApiUrl('/api/dashboard/clear'), { method: 'DELETE' });
+        // --- Init ---
+        if (!getToken()) {
+            window.location.href = '/login';
+        } else {
+            const user = getUser();
+            if (user) {
+                document.getElementById('userLabel').textContent = user.name || user.email;
+            }
             loadDashboard();
-        }
+            setInterval(loadDashboard, 30000);
 
-        initDashboard();
-        setInterval(loadDashboard, 30000);
+            // Escuchar notificaciones del detector para refrescar
+            try {
+                new BroadcastChannel('prompt-sentinel').onmessage = () => loadDashboard();
+            } catch (e) {}
+        }
     </script>
 </body>
 

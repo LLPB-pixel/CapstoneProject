@@ -13,15 +13,19 @@ Ejemplo:
 
 Endpoints:
     GET  /              - Pagina principal (landing page)
+    GET  /login         - Pagina de login/registro
     GET  /detector      - Detector de prompts
     GET  /dashboard     - Dashboard de ataques
     POST /detect        - Analiza un prompt
+    POST /api/auth/register  - Registro de usuario
+    POST /api/auth/login     - Login de usuario
     GET  /api/dashboard/stats       - Estadisticas generales
     GET  /api/dashboard/recent      - Ataques recientes
     GET  /api/dashboard/timeline    - Timeline de ataques
     GET  /api/dashboard/top-ips     - Top IPs atacantes
     GET  /api/dashboard/categories  - Categorias de ataque
     GET  /api/dashboard/layers      - Stats por capa
+    DELETE /api/dashboard/clear     - Limpiar dashboard del usuario
     GET  /health        - Health check
     GET  /stats         - Info del modelo
 """
@@ -39,6 +43,7 @@ DEFAULT_PORT = 8000
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 FRONTEND_INDEX_PATH = FRONTEND_DIR / "index.html"
+FRONTEND_LOGIN_PATH = FRONTEND_DIR / "login.html"
 FRONTEND_DETECTOR_PATH = FRONTEND_DIR / "detector.html"
 FRONTEND_DASHBOARD_PATH = FRONTEND_DIR / "dashboard.html"
 
@@ -71,7 +76,7 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
                groq_key: Optional[str] = None):
     """Crea la aplicacion FastAPI."""
     try:
-        from fastapi import FastAPI, HTTPException, Request, Query
+        from fastapi import FastAPI, HTTPException, Request, Query, Header
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
         from pydantic import BaseModel
@@ -118,6 +123,15 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
         prompt: str
         user_id: Optional[str] = None
 
+    class RegisterRequest(BaseModel):
+        email: str
+        password: str
+        name: str
+
+    class LoginRequest(BaseModel):
+        email: str
+        password: str
+
     # --- Funciones auxiliares ---
 
     def _serve_html(file_path: Path):
@@ -137,12 +151,24 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
     def _get_user_agent(request: Request) -> str:
         return request.headers.get("user-agent", "unknown")
 
+    def _get_user_from_token(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+        if not authorization or not authorization.startswith("Bearer "):
+            return None
+        token = authorization.split(" ", 1)[1]
+        from database import decode_token
+        return decode_token(token)
+
     # --- Rutas del frontend ---
 
     @app.get("/", response_class=HTMLResponse)
     async def serve_landing():
         """Pagina principal con explicacion del proyecto."""
         return _serve_html(FRONTEND_INDEX_PATH)
+
+    @app.get("/login", response_class=HTMLResponse)
+    async def serve_login():
+        """Pagina de login y registro."""
+        return _serve_html(FRONTEND_LOGIN_PATH)
 
     @app.get("/detector", response_class=HTMLResponse)
     async def serve_detector():
@@ -154,12 +180,43 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
         """Dashboard de analisis de ataques."""
         return _serve_html(FRONTEND_DASHBOARD_PATH)
 
+    # --- Endpoints de autenticacion ---
+
+    @app.post("/api/auth/register")
+    async def register(req: RegisterRequest):
+        """Registra un nuevo usuario."""
+        from database import register_user, create_token
+        result = register_user(req.email, req.password, req.name)
+        if not result["ok"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        user = {"id": 0, "email": req.email, "name": req.name}
+        from database import authenticate_user
+        user = authenticate_user(req.email, req.password)
+        token = create_token(user)
+        return {"token": token, "user": {"email": user["email"], "name": user["name"]}}
+
+    @app.post("/api/auth/login")
+    async def login(req: LoginRequest):
+        """Autentica un usuario existente."""
+        from database import authenticate_user, create_token
+        user = authenticate_user(req.email, req.password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Email o contrasena incorrectos")
+        token = create_token(user)
+        return {"token": token, "user": {"email": user["email"], "name": user["name"]}}
+
     # --- Endpoint de deteccion ---
 
     @app.post("/detect", response_model=dict)
-    async def detect_prompt(request: PromptRequest, req: Request):
+    async def detect_prompt(request: PromptRequest, req: Request,
+                            authorization: Optional[str] = Header(None)):
         """Analiza un prompt para detectar si contiene inyeccion de instrucciones."""
         start_time = time.time()
+
+        user_email = None
+        user_data = _get_user_from_token(authorization)
+        if user_data:
+            user_email = user_data.get("email")
 
         try:
             print(f"\n{'='*60}")
@@ -179,12 +236,13 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
                     result=result,
                     source_ip=_get_client_ip(req),
                     user_agent=_get_user_agent(req),
+                    user_email=user_email,
                 )
             except Exception as db_err:
                 logger.warning(f"Error al registrar ataque en DB: {db_err}")
             
             logger.info(
-                f"Prompt analizado - User: {request.user_id or 'unknown'}, "
+                f"Prompt analizado - User: {request.user_id or user_email or 'unknown'}, "
                 f"Verdict: {result['final_verdict']}, "
                 f"Time: {processing_time:.2f}s"
             )
@@ -206,56 +264,72 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
                 detail=f"Error al procesar el prompt: {str(e)}"
             )
 
-    # --- Endpoints del dashboard ---
+    # --- Endpoints del dashboard (filtrados por usuario) ---
+
+    def _extract_user(authorization: Optional[str] = Header(None)):
+        user = _get_user_from_token(authorization)
+        if not user:
+            raise HTTPException(status_code=401, detail="No autenticado")
+        return user["email"]
 
     @app.get("/api/dashboard/stats")
-    async def dashboard_stats():
-        """Estadisticas generales del sistema."""
+    async def dashboard_stats(authorization: Optional[str] = Header(None)):
+        """Estadisticas generales del sistema (solo del usuario)."""
         from database import get_dashboard_stats
-        return get_dashboard_stats()
+        user_email = _extract_user(authorization)
+        return get_dashboard_stats(user_email=user_email)
 
     @app.get("/api/dashboard/recent")
     async def dashboard_recent(
         limit: int = Query(default=50, ge=1, le=500),
-        verdict: Optional[str] = Query(default=None)
+        verdict: Optional[str] = Query(default=None),
+        authorization: Optional[str] = Header(None),
     ):
-        """Ataques recientes registrados."""
+        """Ataques recientes del usuario."""
         from database import get_recent_attacks
-        return get_recent_attacks(limit=limit, verdict=verdict)
+        user_email = _extract_user(authorization)
+        return get_recent_attacks(limit=limit, verdict=verdict, user_email=user_email)
 
     @app.get("/api/dashboard/timeline")
     async def dashboard_timeline(
-        days: int = Query(default=7, ge=1, le=90)
+        days: int = Query(default=7, ge=1, le=90),
+        authorization: Optional[str] = Header(None),
     ):
-        """Timeline de ataques por dia."""
+        """Timeline de ataques por dia del usuario."""
         from database import get_attacks_timeline
-        return get_attacks_timeline(days=days)
+        user_email = _extract_user(authorization)
+        return get_attacks_timeline(days=days, user_email=user_email)
 
     @app.get("/api/dashboard/top-ips")
     async def dashboard_top_ips(
-        limit: int = Query(default=10, ge=1, le=50)
+        limit: int = Query(default=10, ge=1, le=50),
+        authorization: Optional[str] = Header(None),
     ):
-        """Principales IPs atacantes."""
+        """Principales IPs atacantes del usuario."""
         from database import get_top_source_ips
-        return get_top_source_ips(limit=limit)
+        user_email = _extract_user(authorization)
+        return get_top_source_ips(limit=limit, user_email=user_email)
 
     @app.get("/api/dashboard/categories")
-    async def dashboard_categories():
-        """Estadisticas de categorias de ataque."""
+    async def dashboard_categories(authorization: Optional[str] = Header(None)):
+        """Estadisticas de categorias de ataque del usuario."""
         from database import get_category_stats
-        return get_category_stats()
+        user_email = _extract_user(authorization)
+        return get_category_stats(user_email=user_email)
 
     @app.get("/api/dashboard/layers")
-    async def dashboard_layers():
-        """Estadisticas de deteccion por capa."""
+    async def dashboard_layers(authorization: Optional[str] = Header(None)):
+        """Estadisticas de deteccion por capa del usuario."""
         from database import get_layer_detection_stats
-        return get_layer_detection_stats()
+        user_email = _extract_user(authorization)
+        return get_layer_detection_stats(user_email=user_email)
 
     @app.delete("/api/dashboard/clear")
-    async def clear_dashboard():
-        """Borra todos los registros del dashboard."""
+    async def clear_dashboard(authorization: Optional[str] = Header(None)):
+        """Borra todos los registros del dashboard del usuario."""
         from database import clear_attacks
-        clear_attacks()
+        user_email = _extract_user(authorization)
+        clear_attacks(user_email=user_email)
         return {"status": "ok", "message": "Dashboard limpiado"}
 
     # --- Endpoints de sistema ---
@@ -313,9 +387,10 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
     else:
         logger.warning("Groq API: No configurada (sin fallback si Mistral falla)")
     logger.info("Landing page: http://localhost:{}/".format(port))
-    logger.info("Detector:      http://localhost:{}/detector".format(port))
-    logger.info("Dashboard:     http://localhost:{}/dashboard".format(port))
-    logger.info("API Docs:      http://localhost:{}/docs".format(port))
+    logger.info("Login:        http://localhost:{}/login".format(port))
+    logger.info("Detector:     http://localhost:{}/detector".format(port))
+    logger.info("Dashboard:    http://localhost:{}/dashboard".format(port))
+    logger.info("API Docs:     http://localhost:{}/docs".format(port))
     
     uvicorn.run(
         "api_server:create_app",

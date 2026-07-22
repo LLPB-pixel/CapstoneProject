@@ -634,7 +634,7 @@
         </div>
         <nav class="sidebar-nav">
             <div class="nav-section">
-                <div class="nav-section-title">Navegacion</div>
+                <div class="nav-section-title">Navegación</div>
                 <a href="/" class="nav-item active">
                     <i class="fas fa-home"></i> Inicio
                 </a>
@@ -655,7 +655,10 @@
                 </a>
             </div>
         </nav>
-        <div class="sidebar-footer">
+        <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:8px;">
+            <a href="/login" style="color:#ef4444;text-decoration:none;font-weight:600;font-size:0.8rem;">
+                <i class="fas fa-sign-in-alt"></i> Iniciar sesión
+            </a>
             Prompt Sentinel v1.0 &mdash; Capstone Project
         </div>
     </aside>
@@ -667,8 +670,8 @@
                 <div class="hero-badge"><i class="fas fa-graduation-cap"></i> Samsung Diploma &mdash; Capstone Project</div>
                 <h1>Sistema de Seguridad<br>contra <span>Prompt Injection</span></h1>
                 <p>
-                    Prompt Sentinel es un sistema de proteccion multi-capa disenado para detectar y bloquear
-                    ataques de inyeccion de instrucciones en modelos de lenguaje (LLMs). Combina filtros
+                    Prompt Sentinel es un sistema de protección multi-capa diseñado para detectar y bloquear
+                    ataques de inyección de instrucciones en modelos de lenguaje (LLMs). Combina filtros
                     heuristicos, un modelo de Deep Learning y un LLM-Judge para ofrecer una defensa robusta
                     y escalable.
                 </p>
@@ -695,7 +698,7 @@
             </div>
             <div class="stat-block">
                 <div class="value">98%</div>
-                <div class="label">Precision en Deteccion</div>
+                <div class="label">Precisión en Detección</div>
             </div>
             <div class="stat-block">
                 <div class="value">24/7</div>
@@ -715,9 +718,9 @@
                 <div class="layer-card">
                     <div class="layer-number">01</div>
                     <div class="layer-icon"><i class="fas fa-filter"></i></div>
-                    <h3>Capa 1: Filtro Heuristico</h3>
+                    <h3>Capa 1: Filtro Heurístico</h3>
                     <p>
-                        Analisis rapido basado en expresiones regulares, deteccion de caracteres invisibles,
+                        Análisis rápido basado en expresiones regulares, detección de caracteres invisibles,
                         homoglifos, bases64 y scoring de perplejidad. Filtra el 90% de prompts obviamente
                         maliciosos en milisegundos.
                     </p>
@@ -735,7 +738,7 @@
                     <h3>Capa 2: Modelo DistilBERT</h3>
                     <p>
                         Clasificador binario fine-tuneado con miles de ejemplos de prompts benignos y
-                        maliciosos. Detecta patrones sutiles de inyeccion que el filtro heuristico podria
+                        maliciosos. Detecta patrones sutiles de                         inyección que el filtro heurístico podría
                         pasar por alto.
                     </p>
                     <div class="layer-tags">
@@ -750,7 +753,7 @@
                     <div class="layer-icon"><i class="fas fa-robot"></i></div>
                     <h3>Capa 3: LLM-Judge (Mistral)</h3>
                     <p>
-                        Analisis semantico avanzado utilizando Mistral como juez. Evalua la intencion,
+                        Análisis semántico avanzado utilizando Mistral como juez. Evalúa la intención,
                         contexto y posible impacto del prompt, proporcionando la decision final con
                         explicaciones detalladas.
                     </p>
@@ -770,7 +773,7 @@
                 <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
                 <div class="flow-step">
                     <i class="fas fa-filter"></i>
-                    <span>Heuristico</span>
+                    <span>Heurístico</span>
                 </div>
                 <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
                 <div class="flow-step">
@@ -792,49 +795,49 @@
 
         <!-- Features -->
         <section class="section" style="background: var(--light);">
-            <h2 class="section-title">Caracteristicas Principales</h2>
+            <h2 class="section-title">Características Principales</h2>
             <p class="section-subtitle">
-                Disenado para ser rapido, preciso y facil de integrar en cualquier sistema que utilice LLMs.
+                Diseñado para ser rápido, preciso y fácil de integrar en cualquier sistema que utilice LLMs.
             </p>
 
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-bolt"></i></div>
-                    <h3>Deteccion en Tiempo Real</h3>
+                    <h3>Detección en Tiempo Real</h3>
                     <p>Analiza y clasifica prompts en menos de 3 segundos, permitiendo proteger aplicaciones en tiempo real sin degradar la experiencia del usuario.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-layer-group"></i></div>
                     <h3>Defensa en Profundidad</h3>
-                    <p>Tres capas independientes se complementan entre si, minimizando tanto falsos positivos como falsos negativos en la deteccion.</p>
+                    <p>Tres capas independientes se complementan entre si, minimizando tanto falsos positivos como falsos negativos en la detección.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
-                    <h3>Dashboard de Analisis</h3>
-                    <p>Visualiza en tiempo real los patrones de ataque, fuentes sospechosas y metricas de rendimiento del sistema de deteccion.</p>
+                    <h3>Dashboard de Análisis</h3>
+                    <p>Visualiza en tiempo real los patrones de ataque, fuentes sospechosas y métricas de rendimiento del sistema de detección.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-plug"></i></div>
                     <h3>API RESTful</h3>
-                    <p>Integracion sencilla via API REST con documentacion interactiva (Swagger/OpenAPI). Compatible con cualquier stack tecnologico.</p>
+                    <p>Integración sencilla vía API REST con documentación interactiva (Swagger/OpenAPI). Compatible con cualquier stack tecnologico.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-database"></i></div>
                     <h3>Registro de Ataques</h3>
-                    <p>Cada intento de inyeccion queda registrado en una base de datos SQL para analisis forense, metricas y mejora continua del sistema.</p>
+                    <p>Cada intento de inyección queda registrado en una base de datos SQL para análisis forense, métricas y mejora continua del sistema.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon"><i class="fas fa-docker"></i></div>
                     <h3>Despliegue Containerizado</h3>
-                    <p>Listo para produccion con Docker y Docker Compose. Despliegue en un solo comando en cualquier infraestructura.</p>
+                    <p>Listo para producción con Docker y Docker Compose. Despliegue en un solo comando en cualquier infraestructura.</p>
                 </div>
             </div>
         </section>
 
         <!-- Tech Stack -->
         <section class="section">
-            <h2 class="section-title">Stack Tecnologico</h2>
-            <p class="section-subtitle">Tecnologias utilizadas en el desarrollo del sistema.</p>
+            <h2 class="section-title">Stack Tecnológico</h2>
+            <p class="section-subtitle">Tecnologías utilizadas en el desarrollo del sistema.</p>
 
             <div class="tech-grid">
                 <div class="tech-item">

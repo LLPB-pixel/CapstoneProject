@@ -114,10 +114,15 @@ def evaluate_prompt_security(user_prompt, api_key, model="mistral-medium-latest"
             return _fallback_to_groq(user_prompt, groq_key, groq_model)
 
         # Otro tipo de error HTTP sin fallback disponible
+        if groq_key:
+            logger.warning("[Layer3] Intentando con Groq API como fallback...")
+            return _fallback_to_groq(user_prompt, groq_key, groq_model)
+
         return {
-            "is_good": False,
-            "score": 0.0,
-            "evaluation": f"Error Mistral HTTP {status_code}: {str(e)}"
+            "is_good": None,
+            "score": None,
+            "evaluation": "Servicio no disponible",
+            "unavailable": True
         }
 
     except requests.exceptions.RequestException as e:
@@ -128,9 +133,10 @@ def evaluate_prompt_security(user_prompt, api_key, model="mistral-medium-latest"
             return _fallback_to_groq(user_prompt, groq_key, groq_model)
 
         return {
-            "is_good": False,
-            "score": 0.0,
-            "evaluation": f"Error de conexion Mistral: {str(e)}"
+            "is_good": None,
+            "score": None,
+            "evaluation": "Servicio no disponible",
+            "unavailable": True
         }
 
     except Exception as e:
@@ -141,9 +147,10 @@ def evaluate_prompt_security(user_prompt, api_key, model="mistral-medium-latest"
             return _fallback_to_groq(user_prompt, groq_key, groq_model)
 
         return {
-            "is_good": False,
-            "score": 0.0,
-            "evaluation": f"Error: {str(e)}"
+            "is_good": None,
+            "score": None,
+            "evaluation": "Servicio no disponible",
+            "unavailable": True
         }
 
 
@@ -169,9 +176,10 @@ def _fallback_to_groq(user_prompt, groq_key, groq_model="llama-3.3-70b-versatile
     except Exception as e:
         logger.error(f"[Layer3-Groq] Error llamando a Groq: {e}")
         return {
-            "is_good": False,
-            "score": 0.0,
-            "evaluation": f"Error Groq fallback: {str(e)}"
+            "is_good": None,
+            "score": None,
+            "evaluation": "Servicio no disponible",
+            "unavailable": True
         }
 
 

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Prompt Sentinel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--darker);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-wrapper {
+            display: flex;
+            width: 900px;
+            max-width: 95vw;
+            min-height: 520px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-branding {
+            flex: 1;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            padding: 48px 36px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .login-branding i {
+            font-size: 4rem;
+            margin-bottom: 24px;
+            opacity: 0.9;
+        }
+
+        .login-branding h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-branding p {
+            font-size: 0.9rem;
+            opacity: 0.75;
+            line-height: 1.5;
+        }
+
+        .login-form-side {
+            flex: 1;
+            background: white;
+            color: var(--dark);
+            padding: 48px 36px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-form-side h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .login-form-side .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--dark);
+        }
+
+        .form-group .input-wrapper {
+            position: relative;
+        }
+
+        .form-group .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px 12px 40px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 13px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 6px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .toggle-mode {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        .toggle-mode a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .toggle-mode a:hover {
+            text-decoration: underline;
+        }
+
+        .error-msg {
+            background: #fee2e2;
+            color: var(--danger);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .success-msg {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .name-group {
+            display: none;
+        }
+
+        .name-group.visible {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .login-branding {
+                display: none;
+            }
+
+            .login-form-side {
+                padding: 36px 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-wrapper">
+        <div class="login-branding">
+            <i class="fas fa-shield-halved"></i>
+            <h2>Prompt Sentinel</h2>
+            <p>Sistema de seguridad para modelos de lenguaje. Detecta y bloquea prompts peligrosos en tiempo real.</p>
+        </div>
+        <div class="login-form-side">
+            <!-- Login form -->
+            <div id="loginSection">
+                <h2>Iniciar Sesión</h2>
+                <p class="subtitle">Accede a tu dashboard de seguridad</p>
+
+                <div class="error-msg" id="loginError"></div>
+
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="loginEmail" placeholder="tu@gmail.com" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" id="loginBtn">Entrar</button>
+                </form>
+
+                <div class="toggle-mode">
+                    No tienes cuenta? <a onclick="showRegister()">Regístrate aquí</a>
+                </div>
+            </div>
+
+            <!-- Register form -->
+            <div id="registerSection" style="display:none;">
+                <h2>Crear Cuenta</h2>
+                <p class="subtitle">Regístrate para empezar a usar Prompt Sentinel</p>
+
+                <div class="error-msg" id="registerError"></div>
+                <div class="success-msg" id="registerSuccess"></div>
+
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-group name-group visible" id="nameGroup">
+                        <label>Nombre</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="registerName" placeholder="Tu nombre" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="registerEmail" placeholder="tu@gmail.com" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" id="registerBtn">Crear Cuenta</button>
+                </form>
+
+                <div class="toggle-mode">
+                    Ya tienes cuenta? <a onclick="showLogin()">Inicia sesión</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:8000'
+            : '';
+
+        function getApiUrl(path) {
+            return API_BASE + path;
+        }
+
+        function showRegister() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('registerSection').style.display = 'block';
+        }
+
+        function showLogin() {
+            document.getElementById('registerSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Entrando...';
+
+            try {
+                const resp = await fetch(getApiUrl('/api/auth/login'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value,
+                    }),
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    errorDiv.textContent = data.detail || 'Error al iniciar sesión';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = '/dashboard';
+            } catch (err) {
+                errorDiv.textContent = 'Error de conexión con el servidor';
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Entrar';
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('registerBtn');
+            const errorDiv = document.getElementById('registerError');
+            const successDiv = document.getElementById('registerSuccess');
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Creando cuenta...';
+
+            try {
+                const resp = await fetch(getApiUrl('/api/auth/register'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('registerName').value,
+                        email: document.getElementById('registerEmail').value,
+                        password: document.getElementById('registerPassword').value,
+                    }),
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    errorDiv.textContent = data.detail || 'Error al registrar';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = '/dashboard';
+            } catch (err) {
+                errorDiv.textContent = 'Error de conexión con el servidor';
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Crear Cuenta';
+            }
+        }
+
+        // Si ya hay token, redirigir al dashboard
+        if (localStorage.getItem('token')) {
+            window.location.href = '/dashboard';
+        }
+    </script>
+</body>
+
+</html>
