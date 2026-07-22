@@ -6,10 +6,10 @@ Este servidor expone el pipeline como una API REST para ser consumida
 por el frontend o cualquier otro cliente.
 
 Uso:
-    python api_server.py <MISTRAL_API_KEY> [--port PUERTO] [--model_path RUTA_AL_MODELO]
+    python api_server.py --mistral_key <MISTRAL_API_KEY> [--groq_key GROQ_API_KEY] [--port PUERTO] [--model_path RUTA_AL_MODELO]
     
 Ejemplo:
-    python api_server.py sk-1234567890 --port 8000 --model_path ../models/distilbert_sentinel
+    python api_server.py --mistral_key sk-1234567890 --groq_key gsk_xxx --port 8000 --model_path ../models/distilbert_sentinel
 
 Endpoints:
     GET  /              - Pagina principal (landing page)
@@ -86,7 +86,7 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
     if model_path is None:
         model_path = SERVER_MODEL_PATH
     if groq_key is None:
-        groq_key = SERVER_GROQ_KEY or os.environ.get("GROQ_API_KEY")
+        groq_key = SERVER_GROQ_KEY
     
     # Configurar ruta del modelo
     set_model_path(model_path)
@@ -297,7 +297,7 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
     global SERVER_API_KEY, SERVER_MODEL_PATH, SERVER_GROQ_KEY
     SERVER_API_KEY = api_key
     SERVER_MODEL_PATH = model_path
-    SERVER_GROQ_KEY = groq_key or os.environ.get("GROQ_API_KEY")
+    SERVER_GROQ_KEY = groq_key
     
     logger.info(f"Iniciando servidor API en http://localhost:{port}")
     logger.info(f"Modelo DistilBERT: {model_path}")
@@ -326,9 +326,16 @@ def main():
         description="Servidor API para deteccion de Prompt Injection"
     )
     parser.add_argument(
-        "api_key",
+        "--mistral_key",
         type=str,
+        required=True,
         help="API Key de Mistral para la Capa 3 (LLM-Judge)"
+    )
+    parser.add_argument(
+        "--groq_key",
+        type=str,
+        default=None,
+        help="API Key de Groq (fallback para Mistral)"
     )
     parser.add_argument(
         "--port",
@@ -345,11 +352,8 @@ def main():
     
     args = parser.parse_args()
 
-    # Leer GROQ_API_KEY del entorno
-    groq_key = os.environ.get("GROQ_API_KEY")
-
     # Iniciar servidor
-    run_server(args.api_key, args.port, args.model_path, groq_key=groq_key)
+    run_server(args.mistral_key, args.port, args.model_path, groq_key=args.groq_key)
 
 
 if __name__ == "__main__":
