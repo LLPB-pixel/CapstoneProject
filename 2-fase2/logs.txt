@@ -1,0 +1,74 @@
+python3 train_distilbert.py --data_dir ../Data --epochs 3 --batch_size 32
+[INFO] Modelo: microsoft/deberta-v3-base
+[INFO] Epochs: 3
+[INFO] Batch size: 32
+[INFO] Learning rate: 2e-05
+[INFO] Max length: 512
+[INFO] Warmup steps: 100
+[INFO] Weight decay: 0.0
+[INFO] Data dir: /media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/Data
+[INFO] Output dir: /media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/CapstoneProject/models/distilbert_sentinel
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+config.json: 100%|████████████████████████████| 579/579 [00:00<00:00, 5.69MB/s]
+tokenizer_config.json: 100%|█████████████████| 52.0/52.0 [00:00<00:00, 330kB/s]
+spm.model: downloading bytes: █████████████████████████████| 1.64MB,  159kB/s  
+spm.model: reconstructing file: 100%|█████████████| 2.46MB / 2.46MB,  239kB/s  
+pytorch_model.bin: downloading bytes: █████████████████████|  371MB, 16.9MB/s  
+pytorch_model.bin: reconstructing file: 100%|█████|  371MB /  371MB, 26.4MB/s  
+Loading weights: 100%|████████████████████| 198/198 [00:00<00:00, 33900.98it/s]
+[transformers] DebertaV2ForSequenceClassification LOAD REPORT from: microsoft/deberta-v3-base
+Key                                     | Status     | 
+----------------------------------------+------------+-
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED | 
+mask_predictions.classifier.weight      | UNEXPECTED | 
+mask_predictions.LayerNorm.bias         | UNEXPECTED | 
+mask_predictions.dense.weight           | UNEXPECTED | 
+mask_predictions.LayerNorm.weight       | UNEXPECTED | 
+lm_predictions.lm_head.bias             | UNEXPECTED | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED | 
+mask_predictions.dense.bias             | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED | 
+mask_predictions.classifier.bias        | UNEXPECTED | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED | 
+classifier.weight                       | MISSING    | 
+pooler.dense.bias                       | MISSING    | 
+classifier.bias                         | MISSING    | 
+pooler.dense.weight                     | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+
+[INFO] Cargando splits...
+Traceback (most recent call last):
+  File "/media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/CapstoneProject/train_distilbert.py", line 6, in <module>
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+  File "<frozen runpy>", line 291, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "/media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/CapstoneProject/2-fase2/train_distilbert.py", line 234, in <module>
+    main()
+  File "/media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/CapstoneProject/2-fase2/train_distilbert.py", line 157, in main
+    train_ds = load_split(f"{args.data_dir}/train.csv", tokenizer, args.max_length)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/CapstoneProject/2-fase2/train_distilbert.py", line 73, in load_split
+    df = pd.read_csv(path)
+         ^^^^^^^^^^^^^^^^^
+  File "/home/arnau/miniconda3/envs/SamsungAI/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 873, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/arnau/miniconda3/envs/SamsungAI/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 300, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/arnau/miniconda3/envs/SamsungAI/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1645, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/arnau/miniconda3/envs/SamsungAI/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1904, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/home/arnau/miniconda3/envs/SamsungAI/lib/python3.11/site-packages/pandas/io/common.py", line 926, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/media/arnau/Data1/UNIVERSIDAD/diploma_Samsung/Data/train.csv'
+model.safetensors: downloading bytes: █████████████████████|  371MB, 18.7MB/s  
+model.safetensors: reconstructing file: 100%|█████|  371MB /  371MB, 28.7MB/s 
