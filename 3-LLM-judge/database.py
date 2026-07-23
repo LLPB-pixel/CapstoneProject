@@ -20,7 +20,16 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "attacks.db")
 
-JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
+_db_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+_jwt_secret_file = os.path.join(_db_dir, ".jwt_secret")
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    try:
+        JWT_SECRET = Path(_jwt_secret_file).read_text().strip()
+    except FileNotFoundError:
+        JWT_SECRET = secrets.token_hex(32)
+        os.makedirs(_db_dir, exist_ok=True)
+        Path(_jwt_secret_file).write_text(JWT_SECRET)
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 

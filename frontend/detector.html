@@ -886,8 +886,16 @@
                 },
                 body: JSON.stringify({ prompt })
             })
-                .then(response => response.json())
-                .then(data => processResult(data))
+                .then(response => {
+                    if (response.status === 401) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        window.location.href = '/login';
+                        return null;
+                    }
+                    return response.json();
+                })
+                .then(data => { if (data) processResult(data); })
                 .catch(error => {
                     console.error('Error:', error);
                     showToast('Error al conectar con el servidor', 'error');
