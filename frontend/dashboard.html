@@ -709,10 +709,14 @@
             if (!confirm('¿Seguro que quieres borrar todo tu historial de prompts? Esta acción no se puede deshacer.')) {
                 return;
             }
-            document.querySelector('.refresh-btn[style*="danger"]').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Borrando...';
-            document.querySelector('.refresh-btn[style*="danger"]').disabled = true;
+            const btn = document.querySelector('.refresh-btn[style*="danger"]');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Borrando...';
+                btn.disabled = true;
+            }
             await fetchJSON('/api/dashboard/clear', { method: 'DELETE' });
-            location.reload();
+            await loadDashboard();
+            window.location.reload();
         }
 
         async function loadDashboard() {
@@ -725,9 +729,7 @@
             }
 
             const attacks = await fetchJSON('/api/dashboard/recent?limit=20');
-            if (attacks && attacks.length > 0) {
-                renderAttacksTable(attacks);
-            }
+            renderAttacksTable(attacks || []);
 
             const timeline = await fetchJSON('/api/dashboard/timeline?days=7');
             if (timeline) renderTimeline(timeline);
@@ -742,11 +744,23 @@
             if (categories) renderCategories(categories);
 
             const ips = await fetchJSON('/api/dashboard/top-ips?limit=10');
-            if (ips && ips.length > 0) renderIPs(ips);
+            renderIPs(ips || []);
         }
 
         function renderAttacksTable(attacks) {
             const tbody = document.getElementById('attacksTable');
+            if (!attacks || attacks.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>No hay ataques registrados todavía</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                return;
+            }
             tbody.innerHTML = attacks.map(a => `
                 <tr>
                     <td><span class="verdict-badge verdict-${a.final_verdict}">
@@ -894,6 +908,18 @@
 
         function renderIPs(ips) {
             const tbody = document.getElementById('ipsTable');
+            if (!ips || ips.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <i class="fas fa-globe"></i>
+                                <p>No hay datos de IPs todavía</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                return;
+            }
             tbody.innerHTML = ips.map(ip => {
                 const rate = ip.total > 0 ? ((ip.blocked / ip.total) * 100).toFixed(1) : 0;
                 return `
