@@ -942,26 +942,32 @@
             const layer2Score = isMalicious ? (0.7 + Math.random() * 0.3) : Math.random() * 0.4;
             const layer3Score = isMalicious ? (3 + Math.random() * 2) : (7 + Math.random() * 3);
 
+            const layer1Detected = layer1Score > 0.3;
+            const layer2Detected = isMalicious;
+            const layer3Detected = isMalicious;
+            const detectedCount = (layer1Detected ? 1 : 0) + (layer2Detected ? 1 : 0) + (layer3Detected ? 1 : 0);
+            const isBlocked = detectedCount >= 2;
+
             return {
                 prompt: prompt,
-                final_verdict: isMalicious ? 'BLOCKED' : 'CLEAN',
-                blocked_at_layer: isMalicious ? 3 : null,
+                final_verdict: isBlocked ? 'BLOCKED' : 'CLEAN',
+                blocked_at_layer: isBlocked ? (layer1Detected ? 1 : (layer2Detected ? 2 : 3)) : null,
                 layer1: {
-                    is_suspicious: layer1Score > 0.3,
+                    is_suspicious: layer1Detected,
                     risk_score: layer1Score,
                     triggered_categories: isMalicious ? ['instruction_override', 'system_prompt_extraction'] : [],
                     should_escalate: true
                 },
                 layer2: {
-                    label: isMalicious ? 'injection' : 'benign',
+                    label: layer2Detected ? 'injection' : 'benign',
                     confidence: isMalicious ? (0.85 + Math.random() * 0.15) : (0.9 + Math.random() * 0.1),
                     should_escalate: true,
                     score: layer2Score
                 },
                 layer3: {
-                    is_good: !isMalicious,
+                    is_good: !layer3Detected,
                     score: layer3Score,
-                    evaluation: isMalicious ? 'Prompt malicioso detectado: inyección de instrucciones' : 'Prompt seguro'
+                    evaluation: layer3Detected ? 'Prompt malicioso detectado: inyección de instrucciones' : 'Prompt seguro'
                 },
                 processing_time: 2.5 + Math.random() * 1.5
             };
@@ -983,16 +989,18 @@
 
             const isBlocked = data.final_verdict === 'BLOCKED';
             const blockedLayer = data.blocked_at_layer || 'Ninguna';
-            const detectedCount = (data.layer1.is_suspicious ? 1 : 0) +
-                (data.layer2.label === 'injection' ? 1 : 0) +
-                (data.layer3 && !data.layer3.unavailable && !data.layer3.is_good ? 1 : 0);
+            const detectedCount = data.detected_count !== undefined ? data.detected_count : (
+                (data.layer1 && data.layer1.is_suspicious ? 1 : 0) +
+                (data.layer2 && data.layer2.label === 'injection' ? 1 : 0) +
+                (data.layer3 && !data.layer3.unavailable && !data.layer3.is_good ? 1 : 0)
+            );
 
             finalIcon.innerHTML = isBlocked ? '<i class="fas fa-shield-halved"></i>' : '<i class="fas fa-check-circle"></i>';
             finalVerdict.textContent = isBlocked ? 'BLOQUEADO' : 'SEGURO';
 
             let message = isBlocked
-                ? `El prompt fue bloqueado en la capa ${blockedLayer}`
-                : 'El prompt es seguro y puede ser procesado';
+                ? `El prompt fue bloqueado por mayoría de votos (${detectedCount}/3 capas detectaron amenaza)`
+                : `El prompt fue catalogado como seguro por mayoría (${3 - detectedCount}/3 capas lo aprueban)`;
             if (data.layer3 && data.layer3.unavailable) {
                 message += ' (Capa 3: servicio no disponible)';
             }

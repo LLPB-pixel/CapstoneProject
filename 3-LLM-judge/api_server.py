@@ -248,10 +248,11 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
             )
 
             print(f"[API] Veredicto: {result['final_verdict']}", end="")
-            if result['blocked_at_layer']:
-                print(f" (bloqueado en capa {result['blocked_at_layer']})")
+            detected_cnt = result.get('detected_count', 0)
+            if result['final_verdict'] == 'BLOCKED':
+                print(f" (bloqueado por mayoria: {detected_cnt}/3 capas detectaron inyeccion)")
             else:
-                print(" (limpio)")
+                print(f" (aprobado por mayoria: {detected_cnt}/3 capas detectaron inyeccion)")
             print(f"[API] Tiempo total: {processing_time:.2f}s")
             print(f"{'='*60}\n")
 
@@ -366,8 +367,13 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
     return app
 
 
+def app_factory():
+    """Funcion factory para uvicorn cuando se usa modo reload."""
+    return create_app()
+
+
 def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT_MODEL_PATH,
-               groq_key: Optional[str] = None):
+               groq_key: Optional[str] = None, reload: bool = False):
     """Ejecuta el servidor API."""
     try:
         import uvicorn
@@ -379,10 +385,10 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
     SERVER_API_KEY = api_key
     SERVER_MODEL_PATH = model_path
     SERVER_GROQ_KEY = groq_key
-    
+
     logger.info(f"Iniciando servidor API en http://localhost:{port}")
     logger.info(f"Modelo DistilBERT: {model_path}")
-    if SERVER_GROQ_KEY:
+    if groq_key:
         logger.info("Groq API: Configurada (fallback para Mistral)")
     else:
         logger.warning("Groq API: No configurada (sin fallback si Mistral falla)")
@@ -392,14 +398,28 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
     logger.info("Dashboard:    http://localhost:{}/dashboard".format(port))
     logger.info("API Docs:     http://localhost:{}/docs".format(port))
     
-    uvicorn.run(
-        "api_server:create_app",
-        host="0.0.0.0",
-        port=port,
-        log_level="info",
-        reload=True,
-        factory=True
-    )
+    if reload:
+        import sys
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        uvicorn.run(
+            "api_server:app_factory",
+            factory=True,
+            host="0.0.0.0",
+            port=port,
+            log_level="info",
+            reload=True,
+        )
+    else:
+        app = create_app(api_key=api_key, model_path=model_path, groq_key=groq_key)
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            log_level="info",
+            reload=False,
+        )
 
 
 def main():
@@ -431,11 +451,16 @@ def main():
         default=DEFAULT_MODEL_PATH,
         help=f"Ruta al modelo DistilBERT (default: {DEFAULT_MODEL_PATH})"
     )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Habilitar recarga automatica de codigo al hacer cambios"
+    )
     
     args = parser.parse_args()
 
     # Iniciar servidor
-    run_server(args.mistral_key, args.port, args.model_path, groq_key=args.groq_key)
+    run_server(args.mistral_key, args.port, args.model_path, groq_key=args.groq_key, reload=args.reload)
 
 
 if __name__ == "__main__":

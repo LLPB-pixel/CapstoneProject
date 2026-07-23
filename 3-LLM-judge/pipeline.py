@@ -197,26 +197,48 @@ def run_pipeline(prompt, api_key, groq_key=None):
         else:
             print("  -> Capa 3: Limpio")
     
-    # --- Decidir veredicto final (basado en cualquier capa que haya detectado) ---
+    # --- Decidir veredicto final mediante Votacion por Mayoria (2 de 3 capas) ---
+    layer_votes = []
     if results['layer1_detected']:
-        results['final_verdict'] = 'BLOCKED'
-        results['blocked_at_layer'] = 1
-        print("\n  -> VERDICTO FINAL: BLOCKED (en Capa 1)")
-    elif results['layer2_detected']:
-        results['final_verdict'] = 'BLOCKED'
-        results['blocked_at_layer'] = 2
-        print("\n  -> VERDICTO FINAL: BLOCKED (en Capa 2)")
-    elif results['layer3_detected']:
-        results['final_verdict'] = 'BLOCKED'
-        results['blocked_at_layer'] = 3
-        print("\n  -> VERDICTO FINAL: BLOCKED (en Capa 3)")
-    else:
-        results['final_verdict'] = 'CLEAN'
-        print("\n  -> VERDICTO FINAL: CLEAN")
+        layer_votes.append(1)
+    if results['layer2_detected']:
+        layer_votes.append(2)
+    if results['layer3_detected']:
+        layer_votes.append(3)
+        
+    detected_count = len(layer_votes)
+    results['detected_count'] = detected_count
     
-    # Contar cuantas capas lo detectaron
-    detected_count = sum([results['layer1_detected'], results['layer2_detected'], results['layer3_detected']])
-    print(f"  -> Detecciones: {detected_count}/3 capas")
+    # Manejar si Capa 3 no estuvo disponible
+    layer3_unavailable = l3.get('unavailable', False)
+    
+    if not layer3_unavailable:
+        # 3 capas validas disponibles: se necesitan al menos 2 votos de "injection/bloqueo"
+        if detected_count >= 2:
+            results['final_verdict'] = 'BLOCKED'
+            results['blocked_at_layer'] = layer_votes[0] if layer_votes else None
+            print(f"\n  -> VERDICTO FINAL: BLOCKED (por mayoria: {detected_count}/3 capas detectaron el ataque)")
+        else:
+            results['final_verdict'] = 'CLEAN'
+            results['blocked_at_layer'] = None
+            print(f"\n  -> VERDICTO FINAL: CLEAN (por mayoria: {3 - detected_count}/3 capas consideran el prompt seguro)")
+    else:
+        # Solo 2 capas validas (Capa 1 y Capa 2)
+        if detected_count >= 2:
+            results['final_verdict'] = 'BLOCKED'
+            results['blocked_at_layer'] = layer_votes[0] if layer_votes else None
+            print(f"\n  -> VERDICTO FINAL: BLOCKED (por mayoria con 2 capas: 2/2 capas detectaron el ataque)")
+        elif detected_count == 1:
+            # Empate (1 capa detecto, 1 no) -> Modo seguro (fail-safe): Bloquear por precaucion
+            results['final_verdict'] = 'BLOCKED'
+            results['blocked_at_layer'] = layer_votes[0]
+            print(f"\n  -> VERDICTO FINAL: BLOCKED (por precaucion ante empate: 1/2 capas activas detecto el ataque)")
+        else:
+            results['final_verdict'] = 'CLEAN'
+            results['blocked_at_layer'] = None
+            print(f"\n  -> VERDICTO FINAL: CLEAN (0/2 capas activas detectaron el ataque)")
+    
+    print(f"  -> Detecciones: {detected_count}/3 capas (capas detectantes: {layer_votes if layer_votes else 'ninguna'})")
     
     return results
 
@@ -327,7 +349,7 @@ def is_malicious_prompt(prompt: str) -> bool:
 def simulate_pipeline(prompt: str) -> Dict[str, Any]:
     """
     Simula el pipeline completo sin necesidad de modelos o API externas.
-    Utile para demostraciones o cuando no se tiene acceso a los recursos.
+    Utiles para demostraciones o cuando no se tiene acceso a los recursos.
     
     Args:
         prompt: El prompt a analizar
@@ -356,26 +378,45 @@ def simulate_pipeline(prompt: str) -> Dict[str, Any]:
         if not triggered_categories:
             triggered_categories = ['instruction_override']
     
+    layer1_detected = layer1_score > HEURISTIC_THRESHOLD
+    layer2_detected = is_malicious
+    layer3_detected = is_malicious
+    
+    detected_count = sum([1 if layer1_detected else 0, 1 if layer2_detected else 0, 1 if layer3_detected else 0])
+    is_blocked = detected_count >= 2
+    
+    first_blocked_layer = None
+    if layer1_detected:
+        first_blocked_layer = 1
+    elif layer2_detected:
+        first_blocked_layer = 2
+    elif layer3_detected:
+        first_blocked_layer = 3
+
     result = {
         'prompt': prompt,
-        'final_verdict': 'BLOCKED' if is_malicious else 'CLEAN',
-        'blocked_at_layer': 3 if is_malicious else None,
+        'final_verdict': 'BLOCKED' if is_blocked else 'CLEAN',
+        'blocked_at_layer': first_blocked_layer if is_blocked else None,
+        'layer1_detected': layer1_detected,
+        'layer2_detected': layer2_detected,
+        'layer3_detected': layer3_detected,
+        'detected_count': detected_count,
         'layer1': {
-            'is_suspicious': layer1_score > HEURISTIC_THRESHOLD,
+            'is_suspicious': layer1_detected,
             'risk_score': round(layer1_score, 4),
             'triggered_categories': triggered_categories,
             'should_escalate': True
         },
         'layer2': {
-            'label': 'injection' if is_malicious else 'benign',
+            'label': 'injection' if layer2_detected else 'benign',
             'confidence': round(0.85 + (0.15 if is_malicious else 0.1) * random.random(), 4),
             'should_escalate': True,
             'score': round(layer2_score, 4)
         },
         'layer3': {
-            'is_good': not is_malicious,
+            'is_good': not layer3_detected,
             'score': round(layer3_score, 4),
-            'evaluation': 'Prompt malicioso detectado: inyeccion de instrucciones' if is_malicious 
+            'evaluation': 'Prompt malicioso detectado: inyeccion de instrucciones' if layer3_detected 
                         else 'Prompt seguro, no se detectaron amenazas'
         },
         'processing_time': round(2.0 + random.random() * 1.5, 4)

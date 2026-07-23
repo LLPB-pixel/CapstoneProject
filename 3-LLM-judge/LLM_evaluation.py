@@ -70,16 +70,16 @@ def _call_llm_api(api_url, api_key, model, user_prompt, timeout=30):
     return json.loads(content)
 
 
-def _is_auth_error(status_code):
-    """Determina si un codigo de error es de autenticacion/rate-limit."""
-    return status_code in (401, 403, 429, 402)
+def _is_client_error(status_code):
+    """Determina si un codigo de error es 4xx (error del cliente)."""
+    return status_code is not None and 400 <= status_code < 500
 
 
 def evaluate_prompt_security(user_prompt, api_key, model="mistral-medium-latest",
                              groq_key=None, groq_model="llama-3.3-70b-versatile"):
     """
     Evalua un prompt usando la API de Mistral.
-    Si Mistral falla con error de autenticacion, usa Groq como fallback.
+    Si Mistral falla con error 4xx, usa Groq como fallback.
     
     Args:
         user_prompt: El prompt a evaluar
@@ -108,12 +108,11 @@ def evaluate_prompt_security(user_prompt, api_key, model="mistral-medium-latest"
         status_code = e.response.status_code if e.response is not None else None
         logger.warning(f"[Layer3] Mistral error HTTP {status_code}: {e}")
 
-        if status_code is not None and _is_auth_error(status_code) and groq_key:
-            logger.warning(f"[Layer3] Error de autenticacion/rate-limit en Mistral ({status_code}). "
+        if _is_client_error(status_code) and groq_key:
+            logger.warning(f"[Layer3] Error {status_code} en Mistral. "
                            "Intentando con Groq API como fallback...")
             return _fallback_to_groq(user_prompt, groq_key, groq_model)
 
-        # Otro tipo de error HTTP sin fallback disponible
         if groq_key:
             logger.warning("[Layer3] Intentando con Groq API como fallback...")
             return _fallback_to_groq(user_prompt, groq_key, groq_model)
