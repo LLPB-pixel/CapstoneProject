@@ -9,10 +9,10 @@ services:
     environment:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-demo}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - ATTACKS_DB_PATH=/app/data/attacks.db
+      - ATTACKS_DB_PATH=/app/database/attacks.db
     volumes:
       - ./models:/app/models  # Mount models directory
-      - attacks_data:/app/data  # Persistent attack database
+      - attacks_data:/app/database  # Persistent attack database
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

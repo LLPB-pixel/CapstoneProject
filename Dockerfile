@@ -30,8 +30,8 @@ COPY . /app
 # Create a non-root user
 RUN useradd -m -u 1000 -g 1000 appuser
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+# Create database directory for SQLite database
+RUN mkdir -p /app/database && chown -R appuser:appuser /app/database
 
 USER appuser
 
@@ -39,7 +39,7 @@ USER appuser
 EXPOSE 8000  # FastAPI backend
 
 # Volume for persistent attack database
-VOLUME /app/data
+VOLUME /app/database
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s \

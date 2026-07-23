@@ -18,9 +18,9 @@ from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "attacks.db")
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "attacks.db")
 
-_db_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+_db_dir = os.path.join(os.path.dirname(__file__), "..", "database")
 _jwt_secret_file = os.path.join(_db_dir, ".jwt_secret")
 JWT_SECRET = os.environ.get("JWT_SECRET")
 if not JWT_SECRET:

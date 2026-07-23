@@ -17,7 +17,7 @@ import sys
 import argparse
 from typing import Optional
 
-DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "attacks.db")
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "attacks.db")
 TARGET_EMAIL = "perezllorenc@gmail.com"
 
 
