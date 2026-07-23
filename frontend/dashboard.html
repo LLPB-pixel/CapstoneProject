@@ -709,8 +709,10 @@
             if (!confirm('¿Seguro que quieres borrar todo tu historial de prompts? Esta acción no se puede deshacer.')) {
                 return;
             }
+            document.querySelector('.refresh-btn[style*="danger"]').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Borrando...';
+            document.querySelector('.refresh-btn[style*="danger"]').disabled = true;
             await fetchJSON('/api/dashboard/clear', { method: 'DELETE' });
-            loadDashboard();
+            location.reload();
         }
 
         async function loadDashboard() {

@@ -371,25 +371,91 @@
 
         .result-detail {
             margin-top: 15px;
-            padding: 15px;
+            padding: 16px;
             background: white;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
 
         .result-detail h4 {
             font-size: 0.9rem;
             color: var(--secondary);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .result-detail p {
-            font-size: 0.95rem;
-            color: var(--dark);
-            margin: 4px 0;
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-size: 0.85rem; color: var(--secondary); font-weight: 500; }
+        .detail-value { font-size: 0.95rem; font-weight: 600; color: var(--dark); }
+
+        .detail-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .detail-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+        }
+        .bar-danger { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .bar-warning { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .bar-success { background: linear-gradient(90deg, #10b981, #34d399); }
+
+        .category-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .category-chip {
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--primary);
+            border: 1px solid rgba(37, 99, 235, 0.15);
+        }
+        .category-chip.danger {
+            background: #fee2e2;
+            color: var(--danger);
+            border-color: #fecaca;
+        }
+
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-tag.safe { background: #d1fae5; color: #059669; }
+        .status-tag.unsafe { background: #fee2e2; color: #dc2626; }
+        .status-tag.neutral { background: #f3f4f6; color: #6b7280; }
+
+        .eval-quote {
+            margin-top: 8px;
+            padding: 10px 14px;
+            background: #f9fafb;
+            border-left: 3px solid var(--primary);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #374151;
+            font-style: italic;
+            line-height: 1.4;
         }
 
         .score-badge {
@@ -677,9 +743,9 @@
                             </div>
                             <div class="result-detail" id="layer1Detail" style="display: none;">
                                 <h4><i class="fas fa-info-circle"></i> Detalles:</h4>
-                                <p><strong>Score de riesgo:</strong> <span id="layer1Score">0.0</span></p>
-                                <p><strong>Suspicioso:</strong> <span id="layer1Suspicious">No</span></p>
-                                <p><strong>Categorías:</strong> <span id="layer1Categories">-</span></p>
+                                <div id="layer1Score"></div>
+                                <div id="layer1Suspicious"></div>
+                                <div id="layer1Categories"></div>
                             </div>
                         </div>
                     </div>
@@ -704,11 +770,9 @@
                             </div>
                             <div class="result-detail" id="layer2Detail" style="display: none;">
                                 <h4><i class="fas fa-chart-bar"></i> Detalles:</h4>
-                                <p><strong>Etiqueta:</strong> <span id="layer2Label">-</span></p>
-                                <p><strong>Confianza:</strong> <span id="layer2Confidence">0.0%</span></p>
-                                <p><strong>Score de inyección:</strong>
-                                    <span id="layer2Score" class="score-badge">0.0</span>
-                                </p>
+                                <div id="layer2Label"></div>
+                                <div id="layer2Confidence"></div>
+                                <div id="layer2Score"></div>
                             </div>
                         </div>
                     </div>
@@ -720,7 +784,7 @@
                                 <i class="fas fa-robot"></i>
                             </div>
                             <div>
-                                <div class="layer-title">Capa 3: LLM-Judge (Mistral)</div>
+                                <div class="layer-title">Capa 3: LLM-Judge</div>
                                 <div class="layer-subtitle">Análisis semántico avanzado</div>
                             </div>
                         </div>
@@ -733,9 +797,9 @@
                             </div>
                             <div class="result-detail" id="layer3Detail" style="display: none;">
                                 <h4><i class="fas fa-comment-dots"></i> Evaluación:</h4>
-                                <p><strong>Seguro:</strong> <span id="layer3Safe">-</span></p>
-                                <p><strong>Score:</strong> <span id="layer3Score">0/10</span></p>
-                                <p><strong>Comentario:</strong> <span id="layer3Comment">-</span></p>
+                                <div id="layer3Safe"></div>
+                                <div id="layer3Score"></div>
+                                <div id="layer3Comment"></div>
                             </div>
                         </div>
                     </div>
@@ -1056,27 +1120,69 @@
 
             switch (layerNum) {
                 case 1:
-                    layer.score.textContent = data.risk_score.toFixed(3);
-                    layer.suspicious.textContent = data.is_suspicious ? 'Sí' : 'No';
-                    layer.categories.textContent = data.triggered_categories.length > 0
-                        ? data.triggered_categories.join(', ')
-                        : 'Ninguna';
+                    const score = data.risk_score.toFixed(3);
+                    const isSusp = data.is_suspicious;
+                    const barColor = score > 0.7 ? 'bar-danger' : score > 0.3 ? 'bar-warning' : 'bar-success';
+                    const cats = data.triggered_categories;
+                    layer.score.innerHTML = `
+                        <span class="detail-row">
+                            <span class="detail-label">Score de riesgo</span>
+                            <span class="detail-value">${score}</span>
+                        </span>
+                        <div class="detail-bar"><div class="detail-bar-fill ${barColor}" style="width:${Math.min(score * 100, 100)}%"></div></div>
+                        <span class="detail-row">
+                            <span class="detail-label">Sospechoso</span>
+                            <span class="detail-value"><span class="status-tag ${isSusp ? 'unsafe' : 'safe'}"><i class="fas ${isSusp ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${isSusp ? 'Sí' : 'No'}</span></span>
+                        </span>
+                        <span class="detail-row">
+                            <span class="detail-label">Categorías</span>
+                            <span class="detail-value"><span class="category-chips">${
+                                cats.length > 0
+                                    ? cats.map(c => `<span class="category-chip danger">${c.replace(/_/g, ' ')}</span>`).join('')
+                                    : '<span class="category-chip">Ninguna</span>'
+                            }</span></span>
+                        </span>
+                    `;
                     break;
                 case 2:
-                    layer.label.textContent = data.label;
-                    layer.confidence.textContent = `${(data.confidence * 100).toFixed(1)}%`;
-                    layer.score.textContent = data.score.toFixed(3);
-                    layer.score.className = `score-badge ${getScoreClass(data.score)}`;
+                    const conf = (data.confidence * 100).toFixed(1);
+                    const injScore = data.score.toFixed(3);
+                    const isInjection = data.label === 'injection';
+                    const confBarColor = isInjection ? 'bar-danger' : 'bar-success';
+                    layer.label.innerHTML = `
+                        <span class="detail-row">
+                            <span class="detail-label">Etiqueta</span>
+                            <span class="detail-value"><span class="status-tag ${isInjection ? 'unsafe' : 'safe'}"><i class="fas ${isInjection ? 'fa-skull' : 'fa-shield'}"></i> ${data.label}</span></span>
+                        </span>
+                        <span class="detail-row">
+                            <span class="detail-label">Confianza</span>
+                            <span class="detail-value">${conf}%</span>
+                        </span>
+                        <div class="detail-bar"><div class="detail-bar-fill ${confBarColor}" style="width:${conf}%"></div></div>
+                        <span class="detail-row">
+                            <span class="detail-label">Score de inyección</span>
+                            <span class="detail-value"><span class="score-badge ${getScoreClass(data.score)}">${injScore}</span></span>
+                        </span>
+                    `;
                     break;
                 case 3:
                     if (data.is_good === null || data.is_good === undefined) {
-                        layer.safe.textContent = 'No disponible';
+                        layer.safe.innerHTML = `<span class="status-tag neutral"><i class="fas fa-question-circle"></i> No disponible</span>`;
                         layer.score.textContent = '-';
-                        layer.comment.textContent = data.evaluation || 'Servicio no disponible';
+                        layer.comment.innerHTML = `<div class="eval-quote">${data.evaluation || 'Servicio no disponible'}</div>`;
                     } else {
-                        layer.safe.textContent = data.is_good ? 'Sí' : 'No';
-                        layer.score.textContent = `${data.score.toFixed(1)}/10`;
-                        layer.comment.textContent = data.evaluation;
+                        const isSafe = data.is_good;
+                        layer.safe.innerHTML = `<span class="status-tag ${isSafe ? 'safe' : 'unsafe'}"><i class="fas ${isSafe ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> ${isSafe ? 'Sí' : 'No'}</span>`;
+                        const llmScore = data.score.toFixed(1);
+                        const llmBarColor = llmScore >= 7 ? 'bar-success' : llmScore >= 4 ? 'bar-warning' : 'bar-danger';
+                        layer.score.innerHTML = `
+                            <span class="detail-row">
+                                <span class="detail-label">Puntuación</span>
+                                <span class="detail-value">${llmScore}/10</span>
+                            </span>
+                            <div class="detail-bar"><div class="detail-bar-fill ${llmBarColor}" style="width:${llmScore * 10}%"></div></div>
+                        `;
+                        layer.comment.innerHTML = `<div class="eval-quote">${data.evaluation}</div>`;
                     }
                     break;
             }
