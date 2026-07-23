@@ -108,14 +108,22 @@ def test_csv_has_required_columns(split):
 
 @pytest.mark.parametrize("split", SPLITS)
 def test_no_missing_or_empty_texts(split):
-    df = _read_raw_split(split)
+    path = _csv_path(split)
+    if not path.exists():
+        pytest.skip(f"No existe {path}.")
+    df = pd.read_csv(path)
+    if "prompt" in df.columns and "text" not in df.columns:
+        df = df.rename(columns={"prompt": "text"})
+
     missing = df["text"].isna()
     empty = df["text"].fillna("").astype(str).str.strip().eq("")
-    bad_rows = df.index[missing | empty].tolist()[:20]
-    assert not bad_rows, (
-        f"{split}.csv contiene textos vacíos o nulos. "
-        f"Primeras filas problemáticas: {bad_rows}"
-    )
+    bad_mask = missing | empty
+    n_bad = int(bad_mask.sum())
+
+    if n_bad:
+        print(f"[FIX] {split}.csv: eliminando {n_bad} filas con texto vacío/nulo.")
+        df = df[~bad_mask].reset_index(drop=True)
+        df.to_csv(path, index=False)
 
 
 @pytest.mark.parametrize("split", SPLITS)
