@@ -108,3 +108,8 @@ wandb/
 # Jupyter notebooks
 *.ipynb
 .ipynb_checkpoints/
+
+#word documents
+*.docx
+*.pdf
+academic_documentation.md

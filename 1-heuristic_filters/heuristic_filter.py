@@ -376,7 +376,7 @@ def detect_base64_payload(text: str, min_len: int = 3) -> List[str]:
             except Exception:
                 continue
         
-        if decoded and decoded.isprintable() and len(decoded) >= 2 and decoded not in seen:
+        if decoded and decoded.isprintable() and len(decoded) >= 3 and decoded not in seen:
             seen.add(decoded)
             hits.append(decoded)
     
@@ -1045,10 +1045,10 @@ class HeuristicFilter:
         score += 0.45 * min(len(triggered), 1) + 0.1 * max(len(triggered) - 1, 0)
         # Payloads codificados: señal fuerte de evasión
         score += 0.3 * min(len(encoded_payloads), 1)
-        # Zero-width chars: ofuscación deliberada
-        score += 0.25 * min(zw_count / 3, 1.0)
-        # Homoglifos: suplantación deliberada
-        score += 0.25 * min(homoglyph_count / 5, 1.0)
+        # Zero-width chars: ofuscación deliberada (cualquier ZW char es señal fuerte)
+        score += 0.5 * min(zw_count, 1.0)
+        # Homoglifos: suplantación deliberada (cualquier homoglifo es señal fuerte)
+        score += 0.4 * min(homoglyph_count, 1.0)
         # Perplexity alta: texto generado o adversarial
         score += 0.4 * ppl_flag
         score = min(score, 1.0)
