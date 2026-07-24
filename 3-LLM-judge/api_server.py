@@ -46,6 +46,7 @@ FRONTEND_INDEX_PATH = FRONTEND_DIR / "index.html"
 FRONTEND_LOGIN_PATH = FRONTEND_DIR / "login.html"
 FRONTEND_DETECTOR_PATH = FRONTEND_DIR / "detector.html"
 FRONTEND_DASHBOARD_PATH = FRONTEND_DIR / "dashboard.html"
+FRONTEND_CHAT_PATH = FRONTEND_DIR / "chat.html"
 
 # Variables globales para el servidor (usadas con reload)
 SERVER_API_KEY = None
@@ -180,6 +181,11 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
         """Dashboard de analisis de ataques."""
         return _serve_html(FRONTEND_DASHBOARD_PATH)
 
+    @app.get("/chat", response_class=HTMLResponse)
+    async def serve_chat():
+        """Interfaz de chat con IA protegida por el sistema de seguridad."""
+        return _serve_html(FRONTEND_CHAT_PATH)
+
     # --- Endpoints de autenticacion ---
 
     @app.post("/api/auth/register")
@@ -263,6 +269,109 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
             raise HTTPException(
                 status_code=500,
                 detail=f"Error al procesar el prompt: {str(e)}"
+            )
+
+    class ChatRequest(BaseModel):
+        message: str
+        history: Optional[list] = None
+
+    @app.post("/api/chat")
+    async def chat(request: ChatRequest, req: Request,
+                   authorization: Optional[str] = Header(None)):
+        """Envia un mensaje al chat despues de validarlo con el sistema de seguridad."""
+        start_time = time.time()
+
+        user_email = None
+        user_data = _get_user_from_token(authorization)
+        if user_data:
+            user_email = user_data.get("email")
+
+        try:
+            print(f"\n{'='*60}")
+            print(f"[CHAT] Nuevo mensaje: \"{request.message[:100]}{'...' if len(request.message) > 100 else ''}\"")
+            print(f"{'='*60}")
+
+            # 1. Ejecutar pipeline de seguridad
+            security_result = run_pipeline(request.message, api_key, groq_key=groq_key)
+            is_blocked = security_result['final_verdict'] == 'BLOCKED'
+
+            # Registrar en la base de datos
+            try:
+                from database import log_attack
+                log_attack(
+                    result=security_result,
+                    source_ip=_get_client_ip(req),
+                    user_agent=_get_user_agent(req),
+                    user_email=user_email,
+                )
+            except Exception as db_err:
+                logger.warning(f"Error al registrar ataque en DB: {db_err}")
+
+            if is_blocked:
+                # Prompt bloqueado - devolver error con detalles
+                processing_time = time.time() - start_time
+                detected_count = security_result.get('detected_count', 0)
+                blocked_at = security_result.get('blocked_at_layer')
+
+                # Construir razon del bloqueo
+                reasons = []
+                l1 = security_result.get('layer1', {})
+                l2 = security_result.get('layer2', {})
+                l3 = security_result.get('layer3', {})
+
+                if l1 and l1.get('is_suspicious'):
+                    cats = l1.get('triggered_categories', [])
+                    reasons.append(f"Filtro heuristico detecto: {', '.join(cats) if cats else 'patron sospechoso'}")
+                if l2 and l2.get('label') == 'injection':
+                    reasons.append(f"DistilBERT clasifico como inyeccion (confianza: {l2.get('confidence', 0):.0%})")
+                if l3 and not l3.get('is_good', True):
+                    reasons.append(f"LLM-Judge: {l3.get('evaluation', 'evaluacion negativa')}")
+
+                return {
+                    "success": False,
+                    "blocked": True,
+                    "error": "Tu mensaje ha sido bloqueado por el sistema de seguridad.",
+                    "reasons": reasons,
+                    "detected_count": detected_count,
+                    "blocked_at_layer": blocked_at,
+                    "processing_time": round(processing_time, 4),
+                    "security_result": {
+                        "final_verdict": security_result['final_verdict'],
+                        "layer1_detected": security_result.get('layer1_detected', False),
+                        "layer2_detected": security_result.get('layer2_detected', False),
+                        "layer3_detected": security_result.get('layer3_detected', False),
+                    }
+                }
+
+            # 2. Si el prompt es seguro, generar respuesta con IA
+            history = request.history or []
+            from chat_api import generate_chat_response
+            ai_result = generate_chat_response(
+                user_message=request.message,
+                history=history,
+                api_key=api_key,
+                groq_key=groq_key,
+            )
+
+            processing_time = time.time() - start_time
+
+            print(f"[CHAT] Respuesta generada via {ai_result.get('provider', 'unknown')}")
+            print(f"[CHAT] Tiempo total: {processing_time:.2f}s")
+            print(f"{'='*60}\n")
+
+            return {
+                "success": True,
+                "blocked": False,
+                "response": ai_result["response"],
+                "provider": ai_result.get("provider", "unknown"),
+                "processing_time": round(processing_time, 4),
+            }
+
+        except Exception as e:
+            logger.error(f"Error en chat: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al procesar el mensaje: {str(e)}"
             )
 
     # --- Endpoints del dashboard (filtrados por usuario) ---
