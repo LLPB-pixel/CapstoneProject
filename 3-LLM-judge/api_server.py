@@ -16,7 +16,9 @@ Endpoints:
     GET  /login         - Pagina de login/registro
     GET  /detector      - Detector de prompts
     GET  /dashboard     - Dashboard de ataques
+    GET  /chat          - Interfaz de chat con IA protegida
     POST /detect        - Analiza un prompt
+    POST /api/chat       - Envia mensaje al chat (con pipeline de seguridad)
     POST /api/auth/register  - Registro de usuario
     POST /api/auth/login     - Login de usuario
     GET  /api/dashboard/stats       - Estadisticas generales
@@ -185,6 +187,24 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
     async def serve_chat():
         """Interfaz de chat con IA protegida por el sistema de seguridad."""
         return _serve_html(FRONTEND_CHAT_PATH)
+
+    # --- Rutas con extension .html (para compatibilidad con demo mode) ---
+
+    @app.get("/detector.html", response_class=HTMLResponse)
+    async def serve_detector_html():
+        return _serve_html(FRONTEND_DETECTOR_PATH)
+
+    @app.get("/dashboard.html", response_class=HTMLResponse)
+    async def serve_dashboard_html():
+        return _serve_html(FRONTEND_DASHBOARD_PATH)
+
+    @app.get("/chat.html", response_class=HTMLResponse)
+    async def serve_chat_html():
+        return _serve_html(FRONTEND_CHAT_PATH)
+
+    @app.get("/login.html", response_class=HTMLResponse)
+    async def serve_login_html():
+        return _serve_html(FRONTEND_LOGIN_PATH)
 
     # --- Endpoints de autenticacion ---
 
@@ -504,6 +524,7 @@ def run_server(api_key: str, port: int = DEFAULT_PORT, model_path: str = DEFAULT
     logger.info("Landing page: http://localhost:{}/".format(port))
     logger.info("Login:        http://localhost:{}/login".format(port))
     logger.info("Detector:     http://localhost:{}/detector".format(port))
+    logger.info("Chat IA:      http://localhost:{}/chat".format(port))
     logger.info("Dashboard:    http://localhost:{}/dashboard".format(port))
     logger.info("API Docs:     http://localhost:{}/docs".format(port))
     

@@ -22,13 +22,14 @@ if [ -z "$1" ]; then
     echo "Iniciando servidor web en http://localhost:3000"
     echo "(Abre este enlace en tu navegador)"
     echo ""
-    echo "  Landing:  http://localhost:3000/"
-    echo "  Detector: http://localhost:3000/detector.html"
-    echo "  Dashboard: http://localhost:3000/dashboard.html"
+    echo "  Landing:   http://localhost:3000/"
+    echo "  Detector:  http://localhost:3000/detector"
+    echo "  Chat IA:   http://localhost:3000/chat"
+    echo "  Dashboard: http://localhost:3000/dashboard"
+    echo "  Login:     http://localhost:3000/login"
     echo ""
     
-    cd frontend
-    python3 -m http.server 3000 --bind 0.0.0.0
+    python3 serve_frontend.py 3000
 else
     API_KEY=$1
     echo "API Key proporcionada"
@@ -44,10 +45,12 @@ else
         
         echo "Backend iniciado en http://localhost:8000 (PID: $BACKEND_PID)"
         echo ""
-        echo "  Landing:  http://localhost:8000/"
-        echo "  Detector: http://localhost:8000/detector"
+        echo "  Landing:   http://localhost:8000/"
+        echo "  Detector:  http://localhost:8000/detector"
+        echo "  Chat IA:   http://localhost:8000/chat"
         echo "  Dashboard: http://localhost:8000/dashboard"
-        echo "  API Docs: http://localhost:8000/docs"
+        echo "  Login:     http://localhost:8000/login"
+        echo "  API Docs:  http://localhost:8000/docs"
         echo ""
         
         # Esperar a que el usuario cierre el servidor
