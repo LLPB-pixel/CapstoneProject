@@ -37,7 +37,7 @@ sftp your-user@your-vps-ip
 cd /var/lib/docker/volumes/caprover_prompt-guard/_data/models/
 
 # Upload your models
-put -r ./distilbert_sentinel/
+put -r ./distilbert_detector/
 ```
 
 ## 📋 Configuration

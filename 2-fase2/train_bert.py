@@ -456,7 +456,7 @@ def run_mof_pipeline(
 def main():
     ap = argparse.ArgumentParser(description="Fine-tune DeBERTa-v3-base para detección de prompts maliciosos")
     ap.add_argument("--data_dir", default=str(PROJECT_ROOT / "Data"))
-    ap.add_argument("--out_dir", default=str(PROJECT_ROOT / "models" / "distilbert_sentinel"))
+    ap.add_argument("--out_dir", default=str(PROJECT_ROOT / "models" / "distilbert_detector"))
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--batch_size", type=int, default=8)
     ap.add_argument("--grad_accum", type=int, default=4)

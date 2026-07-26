@@ -825,7 +825,7 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-value" id="blockedAt">-</div>
-                            <div class="stat-label">Bloqueado en capa</div>
+                            <div class="stat-label">Votos de detección</div>
                         </div>
                     </div>
                 </div>
@@ -1018,17 +1018,15 @@
             return {
                 prompt: prompt,
                 final_verdict: isBlocked ? 'BLOCKED' : 'CLEAN',
-                blocked_at_layer: isBlocked ? (layer1Detected ? 1 : (layer2Detected ? 2 : 3)) : null,
+                detected_count: detectedCount,
                 layer1: {
                     is_suspicious: layer1Detected,
                     risk_score: layer1Score,
                     triggered_categories: isMalicious ? ['instruction_override', 'system_prompt_extraction'] : [],
-                    should_escalate: true
                 },
                 layer2: {
                     label: layer2Detected ? 'injection' : 'benign',
                     confidence: isMalicious ? (0.85 + Math.random() * 0.15) : (0.9 + Math.random() * 0.1),
-                    should_escalate: true,
                     score: layer2Score
                 },
                 layer3: {
@@ -1055,7 +1053,6 @@
             }
 
             const isBlocked = data.final_verdict === 'BLOCKED';
-            const blockedLayer = data.blocked_at_layer || 'Ninguna';
             const detectedCount = data.detected_count !== undefined ? data.detected_count : (
                 (data.layer1 && data.layer1.is_suspicious ? 1 : 0) +
                 (data.layer2 && data.layer2.label === 'injection' ? 1 : 0) +
@@ -1074,7 +1071,7 @@
             finalMessage.textContent = message;
             processingTime.textContent = `${data.processing_time.toFixed(2)}s`;
             detectionCount.textContent = detectedCount;
-            blockedAt.textContent = blockedLayer;
+            blockedAt.textContent = `${detectedCount}/3`;
 
             finalResult.className = `final-result ${data.final_verdict}`;
             finalResult.style.display = 'block';

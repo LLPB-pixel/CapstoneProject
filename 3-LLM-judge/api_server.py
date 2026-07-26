@@ -9,7 +9,7 @@ Uso:
     python api_server.py --mistral_key <MISTRAL_API_KEY> [--groq_key GROQ_API_KEY] [--port PUERTO] [--model_path RUTA_AL_MODELO]
     
 Ejemplo:
-    python api_server.py --mistral_key sk-1234567890 --groq_key gsk_xxx --port 8000 --model_path ../models/distilbert_sentinel
+    python api_server.py --mistral_key sk-1234567890 --groq_key gsk_xxx --port 8000 --model_path ../models/distilbert_detector
 
 Endpoints:
     GET  /              - Pagina principal (landing page)
@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Optional
 
 # Configuracion
-DEFAULT_MODEL_PATH = "./models/distilbert_sentinel/checkpoint-22797"
+DEFAULT_MODEL_PATH = "./models/distilbert_detector/checkpoint-22797"
 DEFAULT_PORT = 8000
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"

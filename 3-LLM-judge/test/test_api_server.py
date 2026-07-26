@@ -4,7 +4,7 @@ from api_server import create_app
 
 
 def test_root_serves_frontend_html():
-    app = create_app(api_key="test-key", model_path="../models/distilbert_sentinel")
+    app = create_app(api_key="test-key", model_path="../models/distilbert_detector")
     client = TestClient(app)
 
     response = client.get("/")

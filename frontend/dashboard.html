@@ -609,7 +609,7 @@
                                 <th>Veredicto</th>
                                 <th>Prompt</th>
                                 <th>IP Fuente</th>
-                                <th>Capa</th>
+                                <th>Votos</th>
                                 <th>Tiempo</th>
                                 <th>Fecha</th>
                             </tr>
@@ -764,7 +764,9 @@
                     </tr>`;
                 return;
             }
-            tbody.innerHTML = attacks.map(a => `
+            tbody.innerHTML = attacks.map(a => {
+                    const detectedCount = (a.layer1_suspicious ? 1 : 0) + (a.layer2_label === 'injection' ? 1 : 0) + (!a.layer3_is_good ? 1 : 0);
+                    return `
                 <tr>
                     <td><span class="verdict-badge verdict-${a.final_verdict}">
                         <i class="fas fa-${a.final_verdict === 'BLOCKED' ? 'ban' : 'check'}"></i>
@@ -772,11 +774,11 @@
                     </span></td>
                     <td class="prompt-cell" title="${escapeHtml(a.prompt)}">${escapeHtml(a.prompt)}</td>
                     <td class="ip-cell">${a.source_ip || '-'}</td>
-                    <td>${a.blocked_at_layer || '-'}</td>
+                    <td>${detectedCount}/3</td>
                     <td class="time-cell">${a.processing_time ? a.processing_time.toFixed(2) + 's' : '-'}</td>
                     <td class="time-cell">${formatDate(a.created_at)}</td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         function renderTimeline(data) {

@@ -52,7 +52,7 @@ def load_split(path: str, tokenizer, max_length: int = 256) -> Dataset:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_dir", default="./data")
-    ap.add_argument("--out_dir", default="../models/distilbert_sentinel")
+    ap.add_argument("--out_dir", default="../models/distilbert_detector")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--batch_size", type=int, default=16)
     ap.add_argument("--lr", type=float, default=2e-5)
