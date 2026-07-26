@@ -966,6 +966,7 @@ class HeuristicResult:
     zero_width_count: int = 0
     homoglyph_count: int = 0
     perplexity: Optional[float] = None
+    tfidf_prob: Optional[float] = None
 
 
 def _load_perplexity_threshold(json_path: Optional[str] = None) -> float:
@@ -1001,11 +1002,13 @@ class HeuristicFilter:
     1. Regex/keyword matching contra patrones conocidos de jailbreak
     2. Detección de encoding tricks (base64, homoglifos, zero-width chars)
     3. Perplexity scoring con GPT-2 (opcional, más caro pero detecta ataques generados automáticamente)
+    4. TF-IDF + Regresión Logística (clasificación estadística rápida)
     
     Args:
         use_perplexity: Si usar cálculo de perplexity (default: True)
         perplexity_threshold: Umbral de perplexity para considerar sospechoso.
             Si es None, se carga automaticamente desde perplexity_threshold.json
+        use_tfidf: Si usar el modelo TF-IDF para clasificación (default: True)
         risk_threshold: Umbral de riesgo para marcar como sospechoso (default: 0.3)
     """
     
@@ -1013,12 +1016,30 @@ class HeuristicFilter:
         self,
         use_perplexity: bool = True,
         perplexity_threshold: Optional[float] = None,
+        use_tfidf: bool = True,
         risk_threshold: float = 0.3,
     ):
         self.use_perplexity = use_perplexity
         self.perplexity_threshold = perplexity_threshold if perplexity_threshold is not None else _load_perplexity_threshold()
+        self.use_tfidf = use_tfidf
         self.risk_threshold = risk_threshold
         self._ppl_scorer = PerplexityScorer() if use_perplexity else None
+        self._tfidf = self._load_tfidf_model() if use_tfidf else None
+
+    def _load_tfidf_model(self) -> Optional[Any]:
+        """Carga el modelo TF-IDF serializado. Devuelve None si no existe."""
+        import joblib
+        model_path = os.path.join(os.path.dirname(__file__), "tfidf_model.joblib")
+        try:
+            model = joblib.load(model_path)
+            logger.info(f"Modelo TF-IDF cargado desde {model_path}")
+            return model
+        except FileNotFoundError:
+            logger.warning(f"Modelo TF-IDF no encontrado en {model_path}. TF-IDF deshabilitado.")
+            return None
+        except Exception as e:
+            logger.warning(f"Error cargando modelo TF-IDF: {e}")
+            return None
 
     def analyze(self, text: str) -> HeuristicResult:
         """
@@ -1043,6 +1064,7 @@ class HeuristicFilter:
                 zero_width_count=0,
                 homoglyph_count=0,
                 perplexity=None,
+                tfidf_prob=None,
             )
         
         triggered = []
@@ -1064,7 +1086,16 @@ class HeuristicFilter:
                 logger.warning(f"Error calculating perplexity: {e}")
                 perplexity = None
 
-        # Scoring más agresivo - cualquier patrón conocido o contenido peligroso
+        # TF-IDF: probabilidad de ser injection
+        tfidf_prob = None
+        if self._tfidf is not None:
+            try:
+                tfidf_prob = float(self._tfidf.predict_proba([text])[0][1])
+            except Exception as e:
+                logger.warning(f"Error en TF-IDF predict: {e}")
+                tfidf_prob = None
+
+        # Scoring - cualquier patrón conocido o contenido peligroso
         # debe ser suficiente para marcar como sospechoso
         score = 0.0
         # Categorías de jailbreak: cada una aporta 0.45 (una sola ya supera el umbral de 0.3)
@@ -1077,6 +1108,12 @@ class HeuristicFilter:
         score += 0.4 * min(homoglyph_count, 1.0)
         # Perplexity alta: texto generado o adversarial
         score += 0.4 * ppl_flag
+        # TF-IDF: señal continua de probabilidad de injection
+        if tfidf_prob is not None:
+            score += 0.3 * tfidf_prob
+            # Boost: TF-IDF muy seguro de que es injection
+            if tfidf_prob > 0.9:
+                score += 0.4
         score = min(score, 1.0)
 
         return HeuristicResult(
@@ -1087,6 +1124,7 @@ class HeuristicFilter:
             zero_width_count=zw_count,
             homoglyph_count=homoglyph_count,
             perplexity=perplexity,
+            tfidf_prob=tfidf_prob,
         )
 
 

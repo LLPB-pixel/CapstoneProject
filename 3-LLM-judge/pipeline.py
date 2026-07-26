@@ -63,8 +63,8 @@ def heuristic_filter(prompt):
     sys.path.insert(0, os.path.abspath(_heuristic_dir))
     from heuristic_filter import HeuristicFilter
     
-    # Creamos el filtro (con perplexity calibrada para mejor deteccion)
-    filt = HeuristicFilter(use_perplexity=True, risk_threshold=HEURISTIC_THRESHOLD)
+    # Creamos el filtro (con perplexity y TF-IDF calibrados)
+    filt = HeuristicFilter(use_perplexity=True, use_tfidf=True, risk_threshold=HEURISTIC_THRESHOLD)
     result = filt.analyze(prompt)
     
     return {
