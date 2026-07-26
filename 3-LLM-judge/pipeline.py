@@ -63,15 +63,14 @@ def heuristic_filter(prompt):
     sys.path.insert(0, os.path.abspath(_heuristic_dir))
     from heuristic_filter import HeuristicFilter
     
-    # Creamos el filtro (sin perplexity para hacerlo mas rapido)
-    filt = HeuristicFilter(use_perplexity=False, risk_threshold_escalate=HEURISTIC_THRESHOLD)
+    # Creamos el filtro (con perplexity calibrada para mejor deteccion)
+    filt = HeuristicFilter(use_perplexity=True, risk_threshold=HEURISTIC_THRESHOLD)
     result = filt.analyze(prompt)
     
     return {
         'is_suspicious': result.is_suspicious,
         'risk_score': result.risk_score,
         'triggered_categories': result.triggered_categories,
-        'should_escalate': result.should_escalate
     }
 
 
@@ -92,7 +91,6 @@ def layer2_filter(prompt, model_path="./models/distilbert_sentinel/checkpoint-22
         {
             'label': 'injection' o 'benign',
             'confidence': float (0.0 - 1.0),
-            'should_escalate': bool  # True para pasar a capa 3
             'score': float  # Probabilidad de ser injection
         }
     """
@@ -100,13 +98,11 @@ def layer2_filter(prompt, model_path="./models/distilbert_sentinel/checkpoint-22
         from distilbert_inference import layer2_filter as _layer2_filter
         return _layer2_filter(prompt, model_path)
     except ImportError:
-        # Fallback si no se puede importar (para compatibilidad)
         logger = __import__('logging').getLogger(__name__)
         logger.warning("No se pudo importar distilbert_inference. Usando fallback...")
         return {
             'label': 'benign',
             'confidence': 0.5,
-            'should_escalate': True,
             'score': 0.5,
             'note': 'Fallback: modelo no disponible'
         }
@@ -116,7 +112,6 @@ def layer2_filter(prompt, model_path="./models/distilbert_sentinel/checkpoint-22
         return {
             'label': 'injection',
             'confidence': 0.0,
-            'should_escalate': True,
             'score': 1.0,
             'error': str(e)
         }
@@ -169,10 +164,8 @@ def run_pipeline(prompt, api_key, groq_key=None):
     label = l2.get('label', 'unknown')
     confidence = l2.get('confidence', 0.0)
     score = l2.get('score', 0.0)
-    should_escalate = l2.get('should_escalate', True)
     
     print(f"  Label: {label}, Confianza: {confidence:.4f}, Injection Score: {score:.4f}")
-    print(f"  Escalar a Capa 3: {should_escalate}")
     
     if l2.get('label') == 'injection':
         print("  -> Capa 2: DETECTADO como injection")
@@ -405,12 +398,10 @@ def simulate_pipeline(prompt: str) -> Dict[str, Any]:
             'is_suspicious': layer1_detected,
             'risk_score': round(layer1_score, 4),
             'triggered_categories': triggered_categories,
-            'should_escalate': True
         },
         'layer2': {
             'label': 'injection' if layer2_detected else 'benign',
             'confidence': round(0.85 + (0.15 if is_malicious else 0.1) * random.random(), 4),
-            'should_escalate': True,
             'score': round(layer2_score, 4)
         },
         'layer3': {

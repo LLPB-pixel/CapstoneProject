@@ -40,6 +40,8 @@ Uso:
 import re
 import base64
 import unicodedata
+import json
+import os
 import logging
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Any
@@ -964,7 +966,31 @@ class HeuristicResult:
     zero_width_count: int = 0
     homoglyph_count: int = 0
     perplexity: Optional[float] = None
-    should_escalate: bool = False          # True -> pasar a Capa 2/3
+
+
+def _load_perplexity_threshold(json_path: Optional[str] = None) -> float:
+    """
+    Carga el umbral de perplejidad desde el JSON de calibracion.
+
+    Si no existe el archivo o hay error, devuelve el valor por defecto (600.0).
+    """
+    DEFAULT_THRESHOLD = 600.0
+
+    if json_path is None:
+        json_path = os.path.join(os.path.dirname(__file__), "perplexity_threshold.json")
+
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        threshold = float(data["threshold"])
+        logger.info(f"Umbral de perplejidad cargado desde {json_path}: {threshold:.2f}")
+        return threshold
+    except FileNotFoundError:
+        logger.warning(f"Archivo de calibracion no encontrado ({json_path}). Usando umbral por defecto: {DEFAULT_THRESHOLD}")
+        return DEFAULT_THRESHOLD
+    except (KeyError, ValueError, json.JSONDecodeError) as e:
+        logger.warning(f"Error leyendo calibracion ({e}). Usando umbral por defecto: {DEFAULT_THRESHOLD}")
+        return DEFAULT_THRESHOLD
 
 
 class HeuristicFilter:
@@ -978,19 +1004,20 @@ class HeuristicFilter:
     
     Args:
         use_perplexity: Si usar cálculo de perplexity (default: True)
-        perplexity_threshold: Umbral de perplexity para considerar sospechoso (default: 600.0)
-        risk_threshold_escalate: Umbral de riesgo para escalar a capas superiores (default: 0.3)
+        perplexity_threshold: Umbral de perplexity para considerar sospechoso.
+            Si es None, se carga automaticamente desde perplexity_threshold.json
+        risk_threshold: Umbral de riesgo para marcar como sospechoso (default: 0.3)
     """
     
     def __init__(
         self,
         use_perplexity: bool = True,
-        perplexity_threshold: float = 600.0,
-        risk_threshold_escalate: float = 0.3,
+        perplexity_threshold: Optional[float] = None,
+        risk_threshold: float = 0.3,
     ):
         self.use_perplexity = use_perplexity
-        self.perplexity_threshold = perplexity_threshold
-        self.risk_threshold_escalate = risk_threshold_escalate
+        self.perplexity_threshold = perplexity_threshold if perplexity_threshold is not None else _load_perplexity_threshold()
+        self.risk_threshold = risk_threshold
         self._ppl_scorer = PerplexityScorer() if use_perplexity else None
 
     def analyze(self, text: str) -> HeuristicResult:
@@ -1016,7 +1043,6 @@ class HeuristicFilter:
                 zero_width_count=0,
                 homoglyph_count=0,
                 perplexity=None,
-                should_escalate=False,
             )
         
         triggered = []
@@ -1054,14 +1080,13 @@ class HeuristicFilter:
         score = min(score, 1.0)
 
         return HeuristicResult(
-            is_suspicious=score >= self.risk_threshold_escalate,
+            is_suspicious=score >= self.risk_threshold,
             risk_score=round(score, 3),
             triggered_categories=triggered,
             encoded_payloads=encoded_payloads,
             zero_width_count=zw_count,
             homoglyph_count=homoglyph_count,
             perplexity=perplexity,
-            should_escalate=score >= self.risk_threshold_escalate,
         )
 
 
