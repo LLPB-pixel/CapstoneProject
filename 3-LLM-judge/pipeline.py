@@ -64,7 +64,7 @@ def heuristic_filter(prompt):
     from heuristic_filter import HeuristicFilter
     
     # Creamos el filtro (con perplexity y TF-IDF calibrados)
-    filt = HeuristicFilter(use_perplexity=True, use_tfidf=True, risk_threshold=HEURISTIC_THRESHOLD)
+    filt = HeuristicFilter(risk_threshold=HEURISTIC_THRESHOLD)
     result = filt.analyze(prompt)
     
     return {
