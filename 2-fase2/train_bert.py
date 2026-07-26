@@ -34,6 +34,7 @@ from datasets import Dataset, concatenate_datasets
 from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
+    DataCollatorWithPadding,
     TrainingArguments,
     Trainer,
     EarlyStoppingCallback,
@@ -88,9 +89,8 @@ def load_split(path: str, tokenizer, max_length: int = 512) -> Dataset:
     df["text"] = df["text"].apply(lambda x: x.strip())
     df["text"] = df["text"].replace(r"^\s*$", "", regex=True)
 
-    label_values = sorted(df["label"].dropna().astype(str).unique())
-    label_mapping = {label: int(idx) for idx, label in enumerate(label_values)}
-    df["label"] = df["label"].fillna(label_values[0] if label_values else "0").astype(str)
+    label_mapping = {"bad": 1, "good": 0}
+    df["label"] = df["label"].fillna("good").astype(str)
     df["label"] = df["label"].map(label_mapping)
     df = df.dropna(subset=["label"])
 
@@ -101,10 +101,9 @@ def load_split(path: str, tokenizer, max_length: int = 512) -> Dataset:
             batch["text"],
             truncation=True,
             max_length=max_length,
-            padding="max_length",
         )
 
-    return ds.map(tokenize, batched=True)
+    return ds.map(tokenize, batched=True, batch_size=1000)
 
 
 # ---------------------------------------------------------------------------
@@ -295,10 +294,9 @@ def create_mof_dataset(
             batch["text"],
             truncation=True,
             max_length=max_length,
-            padding="max_length",
         )
 
-    return ds.map(tokenize_fn, batched=True)
+    return ds.map(tokenize_fn, batched=True, batch_size=1000)
 
 
 def train_model(
@@ -345,6 +343,7 @@ def train_model(
         train_dataset=train_ds,
         eval_dataset=val_ds,
         compute_metrics=compute_metrics,
+        data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
         callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
     )
 
@@ -456,7 +455,7 @@ def run_mof_pipeline(
 def main():
     ap = argparse.ArgumentParser(description="Fine-tune DeBERTa-v3-base para detección de prompts maliciosos")
     ap.add_argument("--data_dir", default=str(PROJECT_ROOT / "Data"))
-    ap.add_argument("--out_dir", default=str(PROJECT_ROOT / "models" / "distilbert_detector"))
+    ap.add_argument("--out_dir", default=str(PROJECT_ROOT / "models" / "deberta_detector"))
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--batch_size", type=int, default=8)
     ap.add_argument("--grad_accum", type=int, default=4)
