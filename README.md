@@ -86,7 +86,7 @@ CapstoneProject/
 
 ```
   Usuario → ┌────────────────────────────┐
-             │  CAPA 1: Heurístico       │  ← Regex, Base64, Perplexity
+             │  CAPA 1: Heurístico       │  ← Regex, Base64, Perplexity, tfidf 
              └──────────────┬─────────────┘  (~50ms, CPU-only)
                             ↓
              ┌────────────────────────────┐
@@ -102,8 +102,7 @@ CapstoneProject/
              └────────────────────────────┘
 ```
 
-**Filosofía**: Defensa en profundidad — si una capa falla, las demás compensan. En caso de empate → **fail-safe** (bloquea por precaución).
-
+**Filosofía**: Defensa en profundidad — si una capa falla, las demás compensan. 
 ---
 
 ## 🛠️ Stack Tecnológico
