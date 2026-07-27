@@ -494,17 +494,16 @@ class PerplexityScorer:
         # Import diferido: esta clase es opcional y pesada (torch + transformers)
         try:
             import torch
-            from transformers import GPT2LMHeadModel, GPT2TokenizerFast
         except ImportError as e:
             raise ImportError(
                 "Perplexity calculation requires transformers and torch. "
                 "Install with: pip install torch transformers"
             ) from e
-        
+
+        from gpt2_model_cache import get_gpt2
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
-        self.model = GPT2LMHeadModel.from_pretrained(model_name).to(self.device)
-        self.model.eval()
+        self.model, self.tokenizer = get_gpt2(model_name, self.device)
         self.torch = torch
         self.model_name = model_name
 
@@ -573,20 +572,20 @@ def calculate_perplexities(
     # Importar dependencias pesadas solo cuando se necesitan
     try:
         import torch
-        from transformers import GPT2LMHeadModel, GPT2TokenizerFast
     except ImportError as e:
         raise ImportError(
             "Perplexity calculation requires transformers and torch. "
             "Install with: pip install torch transformers"
         ) from e
-    
+
+    from gpt2_model_cache import get_gpt2
+
     # Inicializar el model y tokenizer
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     
     logger.info(f"Loading model {model_name} on {device}")
-    tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
-    model = GPT2LMHeadModel.from_pretrained(model_name).to(device)
+    model, tokenizer = get_gpt2(model_name, device)
     model.eval()
     
     # Separar prompts por label
