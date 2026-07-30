@@ -110,6 +110,6 @@ wandb/
 .ipynb_checkpoints/
 
 #word documents
-*.docx
+
 *.pdf
 academic_documentation.md
