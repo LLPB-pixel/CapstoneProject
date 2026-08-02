@@ -77,7 +77,7 @@ CapstoneProject/
 ## Arquitectura
 
 ```
-Usuario -> [CAPA 1: Heuristico 0-50ms] -> [CAPA 2: ML 100-300ms] -> [CAPA 3: LLM-Judge 1-3s] -> VOTACION 2/3
+Usuario -> [CAPA 1: Heuristico] -> [CAPA 2: ML] -> [CAPA 3: LLM-Judge] -> VOTACION 2/3
 ```
 
 **Filosofia**: Defensa en profundidad. Si una capa falla, las demas compensan. Empate = BLOQUEADO.
