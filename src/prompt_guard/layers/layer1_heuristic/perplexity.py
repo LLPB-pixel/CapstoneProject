@@ -84,7 +84,7 @@ def calculate_perplexities(
             "Install with: pip install torch transformers"
         ) from e
 
-    from gpt2_cache import get_gpt2
+    from prompt_guard.layers.layer1_heuristic.gpt2_cache import get_gpt2
 
     # Inicializar el model y tokenizer
     if device is None:

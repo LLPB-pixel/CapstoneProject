@@ -47,48 +47,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Importar pipeline y database desde la nueva estructura
-try:
-    from prompt_guard.pipeline import run_pipeline, MODEL_PATH as PIPELINE_MODEL_PATH
-except ImportError as e:
-    logger.error(f"No se pudo importar pipeline: {e}")
-    # Crear una funcion dummy para no romper
-    def run_pipeline(prompt, api_key, groq_key=None):
-        return {
-            'prompt': prompt,
-            'final_verdict': 'CLEAN',
-            'layer1': {'is_suspicious': False, 'risk_score': 0.1, 'triggered_categories': []},
-            'layer2': {'label': 'benign', 'confidence': 0.9, 'score': 0.1},
-            'layer3': {'is_good': True, 'score': 8.5, 'evaluation': 'Prompt seguro'},
-            'detected_count': 0,
-            'processing_time': 0.1
-        }
-    PIPELINE_MODEL_PATH = DEFAULT_MODEL_PATH
+from prompt_guard.pipeline import run_pipeline, MODEL_PATH as PIPELINE_MODEL_PATH
 
-try:
-    from prompt_guard.utils.database import (
-        init_db, decode_token, register_user, create_token, 
-        authenticate_user, log_attack, get_dashboard_stats,
-        get_recent_attacks, get_attacks_timeline, get_top_source_ips,
-        get_category_stats, get_layer_detection_stats, clear_attacks, get_db_path
-    )
-except ImportError as e:
-    logger.error(f"No se pudo importar database: {e}")
-    # Funciones dummy
-    def init_db(): pass
-    def decode_token(token): return None
-    def register_user(email, password, name): return {"ok": False, "error": "DB not available"}
-    def create_token(user): return "dummy_token"
-    def authenticate_user(email, password): return None
-    def log_attack(**kwargs): pass
-    def get_dashboard_stats(user_email): return {}
-    def get_recent_attacks(user_email, limit=50): return []
-    def get_attacks_timeline(user_email, days=30): return []
-    def get_top_source_ips(user_email, limit=10): return []
-    def get_category_stats(user_email): return []
-    def get_layer_detection_stats(user_email): return []
-    def clear_attacks(user_email): pass
-    def get_db_path(): return "./data/database/attacks.db"
+from prompt_guard.utils.database import (
+    init_db, decode_token, register_user, create_token,
+    authenticate_user, log_attack, get_dashboard_stats,
+    get_recent_attacks, get_attacks_timeline, get_top_source_ips,
+    get_category_stats, get_layer_detection_stats, clear_attacks, get_db_path
+)
+
+from api.endpoints.chat import generate_chat_response
 
 # Configurar ruta del modelo
 def set_model_path(path: str):
@@ -275,25 +243,38 @@ def create_app(api_key: Optional[str] = None, model_path: Optional[str] = None,
                            authorization: Optional[str] = Header(None)):
         user_data = _get_user_from_token(authorization)
         user_email = user_data.get("email") if user_data else None
+        start_time = time.time()
 
         try:
-            # Analizar el mensaje con el pipeline
+            # Analizar el mensaje con el pipeline de seguridad
             result = run_pipeline(request.message, api_key, groq_key=groq_key)
 
             if result['final_verdict'] == 'BLOCKED':
                 return {
-                    "response": "Lo siento, pero he detectado un intento de prompt injection. Este mensaje ha sido bloqueado por razones de seguridad.",
-                    "is_blocked": True,
-                    "verdict": result
+                    "blocked": True,
+                    "error": "Mensaje bloqueado por el sistema de seguridad: se ha detectado un intento de prompt injection.",
+                    "reasons": result.get('layer1', {}).get('triggered_categories', []),
+                    "detected_count": result.get('detected_count', 0),
+                    "verdict": result,
                 }
-            else:
-                # Por ahora, respuesta simple
-                return {
-                    "response": f"Mensaje recibido: {request.message[:100]}. (Modo seguro: solo respuesta de prueba)",
-                    "is_blocked": False,
-                    "verdict": result
-                }
+
+            # Mensaje seguro: generar respuesta real con el LLM
+            chat_result = generate_chat_response(
+                request.message,
+                request.history or [],
+                api_key,
+                groq_key=groq_key,
+            )
+            processing_time = time.time() - start_time
+            return {
+                "success": True,
+                "response": chat_result["response"],
+                "provider": chat_result["provider"],
+                "processing_time": round(processing_time, 2),
+                "verdict": result,
+            }
         except Exception as e:
+            logger.error(f"Error procesando chat: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
     # Dashboard

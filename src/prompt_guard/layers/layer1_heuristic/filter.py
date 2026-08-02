@@ -378,9 +378,14 @@ def detect_base64_payload(text: str, min_len: int = 3) -> List[str]:
             except Exception:
                 continue
         
+        # La mayoria de los falsos positivos son coincidencias: una palabra normal
+        # que decodifica por azar a texto imprimible pero ilegible (ej. "Llorenc"
+        # -> ".Z+zw"). Un payload real es legible: mayoritariamente alfanumerico.
         if decoded and decoded.isprintable() and len(decoded) >= 3 and decoded not in seen:
-            seen.add(decoded)
-            hits.append(decoded)
+            legible = sum(ch.isalnum() or ch.isspace() for ch in decoded) / len(decoded)
+            if legible >= 0.8:
+                seen.add(decoded)
+                hits.append(decoded)
     
     return hits
 
@@ -437,7 +442,10 @@ def detect_homoglyphs(text: str) -> int:
         >>> detect_homoglyphs("Hello")
         0
     """
-    # Rangos Unicode de caracteres que pueden usarse como homoglifos
+    # Rangos Unicode de caracteres que pueden usarse como homoglifos.
+    # Nota: las letras latinas acentuadas (Latin-1 Supplement, Latin Extended)
+    # se EXCLUYEN a propósito: forman parte del texto legítimo en español,
+    # francés y alemán, y contarlas generaría falsos positivos en prompts benignos.
     HOMOGLYPH_RANGES = {
         # Cirílico (ej: а, е, о, р, х, с)
         (0x0400, 0x04FF): "CYRILLIC",
@@ -451,14 +459,8 @@ def detect_homoglyphs(text: str) -> int:
         (0x0530, 0x058F): "ARMENIAN",
         # Georgiano (ej: ა, ე, ო, რ)
         (0x10A0, 0x10FF): "GEORGIAN",
-        # Alfabeto latino extendido (pueden usarse para ofuscar)
-        (0x0100, 0x024F): "LATIN_EXTENDED",
         # Símbolos matemáticos (ej: ℂ, ℕ, ℝ, ℤ)
         (0x2100, 0x214F): "MATH_SYMBOLS",
-        # Letras con diacríticos que pueden ofuscar
-        (0x00C0, 0x00FF): "LATIN_1_SUPPLEMENT",
-        (0x0100, 0x017F): "LATIN_EXTENDED_A",
-        (0x0180, 0x024F): "LATIN_EXTENDED_B",
         # Caracteres de aspecto similar (fullwidth, etc.)
         (0xFF00, 0xFFEF): "HALFWIDTH_AND_FULLWIDTH",
     }
@@ -472,6 +474,56 @@ def detect_homoglyphs(text: str) -> int:
                     count += 1
                     break
     return count
+
+
+# =============================================================================
+# Deteccion de idioma para perplexity
+# =============================================================================
+
+# GPT-2 es un modelo EN ingles: aplicar su perplexity a texto en otros idiomas
+# produce falsos positivos masivos (el espanol "sorprende" al modelo ingles).
+# Esta puerta de idioma limita la senal de perplexity a texto predominantemente
+# en ingles, donde el modelo es fiable.
+_ENGLISH_STOPWORDS = frozenset(
+    "a about above after again against all am an and any are as at be because been "
+    "before being below between both but by can cannot could did do does doing down "
+    "during each few for from further had has have having he her here him his how i "
+    "if in into is it its itself just me more most my myself no nor not of off on "
+    "once only or other our ours out over own same she should so some than that the "
+    "their them then there these they this those through to too under until up very "
+    "was we were what when where which while who whom why with would you your yours"
+    .split()
+)
+
+# Stopwords de otros idiomas (espanol/frances/aleman) para contrarrestar falsos
+# positivos: palabras compartidas ("no", "me", "la", "de"...).
+_OTHER_LANG_STOPWORDS = frozenset(
+    "el la los las un una unos unas de del y o u en es son era eres para por con sin "
+    "sobre entre a al que si se su sus me te le lo les mi mis tu tus nuestro "
+    "nuestros vuestro vuestra suyo suya hasta desde como mas más muy bien pero "
+    "entonces cuando donde quien cual al qué cómo dónde él ella usted nosotros "
+    "le les des et ou est sont pour avec sans sur à au aux ne sa ses mon ma mes ton "
+    "ta tes notre nos votre vos aussi mais donc parce quand comment il elle nous vous "
+    "ils elles der die das ein eine und oder in ist sind für mit ohne über zwischen "
+    "an auf zu von zum zur aber nicht kein keine den dem des"
+    .split()
+)
+
+
+def _is_english_like(text: str) -> bool:
+    """Deteccion heuristica de idioma para la senal de perplexity.
+
+    Devuelve True si el texto es "predominantemente ingles": una fraccion
+    minima de palabras son stopwords inglesas y no dominan las stopwords de
+    otros idiomas. GPT-2 solo es fiable en ingles.
+    """
+    words = re.findall(r"[A-Za-z]+", text)
+    if not words:
+        return False
+    n = len(words)
+    english_ratio = sum(1 for w in words if w.lower() in _ENGLISH_STOPWORDS) / n
+    other_ratio = sum(1 for w in words if w.lower() in _OTHER_LANG_STOPWORDS) / n
+    return english_ratio >= 0.2 and english_ratio >= other_ratio
 
 
 # =============================================================================
@@ -500,7 +552,7 @@ class PerplexityScorer:
                 "Install with: pip install torch transformers"
             ) from e
 
-        from gpt2_cache import get_gpt2
+        from prompt_guard.layers.layer1_heuristic.gpt2_cache import get_gpt2
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.tokenizer = get_gpt2(model_name, self.device)
@@ -578,7 +630,7 @@ def calculate_perplexities(
             "Install with: pip install torch transformers"
         ) from e
 
-    from gpt2_model_cache import get_gpt2
+    from prompt_guard.layers.layer1_heuristic.gpt2_cache import get_gpt2
 
     # Inicializar el model y tokenizer
     if device is None:
@@ -1082,7 +1134,9 @@ class HeuristicFilter:
 
         perplexity = None
         ppl_flag = False
-        if self._ppl_scorer:
+        # GPT-2 es un modelo ingles: solo se usa su perplexity como senal en
+        # texto ingles. En otros idiomas se omite para evitar falsos positivos.
+        if self._ppl_scorer and _is_english_like(text):
             try:
                 perplexity = self._ppl_scorer.score(text)
                 ppl_flag = perplexity > self.perplexity_threshold

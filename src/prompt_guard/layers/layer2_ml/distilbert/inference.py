@@ -72,59 +72,40 @@ class DistilBertClassifier:
                     self.model_path = checkpoints[-1]
                     logger.info(f"Auto-detectado checkpoint en {self.model_path}")
 
+            attempted_path = str(self.model_path)
+
             # Verificar si existe el modelo
             if not self.model_path.exists() or not (self.model_path / "config.json").exists():
                 default_path = Path(__file__).parent / "models" / "distilbert_detector" / "checkpoint-22797"
                 if default_path.exists():
                     self.model_path = default_path
-                    logger.warning(f"Modelo no encontrado en la ruta indicada, probando {default_path}")
+                    logger.warning(f"Modelo no encontrado en {attempted_path}, probando {default_path}")
                 else:
-                    logger.warning(
-                        f"Modelo DistilBERT no encontrado en {self.model_path} o {default_path}. "
-                        "Se usará el modelo base como fallback (menos preciso)."
+                    raise FileNotFoundError(
+                        f"Modelo DistilBERT fine-tuneado no encontrado en {attempted_path} ni en {default_path}. "
+                        "Entrena el modelo (scripts/train_distilbert.py) o configura la ruta correcta."
                     )
-                    self.model_path = None
-            
-            if self.model_path:
-                logger.info(f"Cargando modelo desde {self.model_path}")
-                
-                # Buscar checkpoint si el directorio no tiene config.json
-                checkpoint_path = None
-                if not (self.model_path / "config.json").exists():
-                    # Buscar directorios de checkpoint
-                    checkpoints = list(self.model_path.glob("checkpoint-*"))
-                    if checkpoints:
-                        # Usar el checkpoint con el número más alto
-                        checkpoints.sort()
-                        checkpoint_path = checkpoints[-1]
-                        logger.info(f"Usando checkpoint: {checkpoint_path}")
-                
-                model_load_path = str(checkpoint_path) if checkpoint_path else str(self.model_path)
-                
-                try:
-                    self.tokenizer = AutoTokenizer.from_pretrained(model_load_path)
-                except Exception as e:
-                    logger.warning(f"Tokenizer no encontrado en {model_load_path}, usando tokenizer base: {e}")
-                    self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-                
-                self.model = AutoModelForSequenceClassification.from_pretrained(
-                    model_load_path, num_labels=2
-                )
-            else:
-                # Fallback: cargar modelo base (no fine-tuneado)
-                logger.warning("Usando modelo base distilbert-base-uncased (no fine-tuneado)")
+
+            logger.info(f"Cargando modelo desde {self.model_path}")
+            model_load_path = str(self.model_path)
+
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(model_load_path)
+            except Exception as e:
+                logger.warning(f"Tokenizer no encontrado en {model_load_path}, usando tokenizer base: {e}")
                 self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-                self.model = AutoModelForSequenceClassification.from_pretrained(
-                    "distilbert-base-uncased", num_labels=2
-                )
-            
+
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                model_load_path, num_labels=2
+            )
+
             # Determinar dispositivo
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             self.model = self.model.to(self.device)
             self.model.eval()
-            
+
             logger.info(f"Modelo cargado en {self.device}")
-            
+
         except Exception as e:
             logger.error(f"Error cargando el modelo: {e}")
             raise RuntimeError(f"No se pudo cargar el modelo DistilBERT: {e}")
@@ -210,7 +191,8 @@ class DistilBertClassifier:
         except Exception as e:
             logger.error(f"Error en prediccion: {e}")
             return {
-                "label": "injection",
+                "unavailable": True,
+                "label": "unavailable",
                 "confidence": 0.0,
                 "score": 0.0,
                 "error": str(e)
@@ -274,12 +256,16 @@ def layer2_filter(prompt: str, model_path: str = None) -> Dict[str, any]:
     """
     classifier = get_distilbert_classifier(model_path)
     result = classifier.predict(prompt)
-    
-    return {
+
+    out = {
         "label": result["label"],
         "confidence": result["confidence"],
         "score": result.get("score", 0.0)
     }
+    if result.get("unavailable"):
+        out["unavailable"] = True
+        out["error"] = result.get("error")
+    return out
 
 
 if __name__ == "__main__":

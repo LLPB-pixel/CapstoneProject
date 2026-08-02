@@ -6,7 +6,6 @@ Genera respuestas conversacionales usando Mistral API con Groq como fallback.
 Se aplica el pipeline de seguridad antes de generar cada respuesta.
 """
 
-import json
 import logging
 import os
 import requests
@@ -86,10 +85,3 @@ def _fallback_to_groq(messages, groq_key, groq_model="llama-3.3-70b-versatile"):
     except Exception as e:
         logger.error(f"[Chat-Groq] Error: {e}")
         return {"response": "Lo siento, el servicio de IA no está disponible en este momento.", "provider": "unavailable"}
-
-
-def evaluate_prompt_security_simple(user_prompt, api_key, groq_key=None,
-                                     model="mistral-medium-latest",
-                                     groq_model="llama-3.3-70b-versatile"):
-    from LLM_evaluation import evaluate_prompt_security as _evaluate
-    return _evaluate(user_prompt, api_key, model=model, groq_key=groq_key, groq_model=groq_model)
