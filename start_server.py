@@ -29,7 +29,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Iniciar servidor Prompt Guard')
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--host', type=str, default='0.0.0.0')
-    parser.add_argument('--no-reload', action='store_true')
+    parser.add_argument('--reload', action='store_true',
+                        help='Recargar automaticamente al editar codigo (usa la app como import string)')
     args = parser.parse_args()
     
     print("\n" + "=" * 70)
@@ -44,4 +45,11 @@ if __name__ == '__main__':
     print("\n  Variables requeridas: MISTRAL_API_KEY, GROQ_API_KEY, JWT_SECRET_KEY")
     print("=" * 70 + "\n")
     
-    uvicorn.run(app, host=args.host, port=args.port, reload=not args.no_reload)
+    # uvicorn NO permite reload=True con la app pasada como objeto: se niega a
+    # arrancar (exit 3). Por defecto reload=False; si se pide --reload, se pasa
+    # la app como import string para que el reloader funcione.
+    if args.reload:
+        app_str = f"{app.__module__}:{app.__name__}"
+        uvicorn.run(app_str, host=args.host, port=args.port, reload=True)
+    else:
+        uvicorn.run(app, host=args.host, port=args.port, reload=False)
