@@ -119,23 +119,12 @@ cp .env.example .env
 
 ---
 
-## Como Levantar el Servidor AHORA
+## Como Levantar el Servidor 
 
-### Opcion 1: Desde el directorio actual (con estructura antigua)
 
-Si quieres probar el proyecto **INMEDIATAMENTE** sin esperar a que actualice todos los imports:
-
-```bash
-# Desde /home/llorenc/Desktop/SamsungIA/CapstoneProject
-
-# Opcion A: Usar el servidor existente en 3-LLM-judge (si todavia existe)
-cd 3-LLM-judge 2>/dev/null && python api_server.py --port 8000 || echo "Directorios viejos eliminados"
-
-# Opcion B: Usar el nuevo main.py
-cd src && PYTHONPATH=. python -m uvicorn api.main:app --reload --port 8000
 ```
 
-### Opcion 2: Con Docker (recomendado)
+### Opcion 1: Con Docker (recomendado)
 
 ```bash
 # Construir imagen
@@ -145,7 +134,7 @@ docker build -t prompt-guard .
 docker run -p 8000:8000 -e MISTRAL_API_KEY=tu_key -e GROQ_API_KEY=tu_key prompt-guard
 ```
 
-### Opcion 3: Directamente con Python (despues de reorganizacion)
+### Opcion 2: Directamente con Python 
 
 ```bash
 cd /home/llorenc/Desktop/SamsungIA/CapstoneProject
