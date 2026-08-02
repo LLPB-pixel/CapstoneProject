@@ -1,0 +1,42 @@
+# Production configuration for Prompt Guard
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  reload: false
+  workers: 4
+
+database:
+  url: "sqlite:////app/data/database/attacks.db"
+  
+jwt:
+  secret_key: "${JWT_SECRET_KEY}"
+  algorithm: "HS256"
+  access_token_expire_minutes: 60
+
+layers:
+  layer1:
+    enabled: true
+    tfidf_model_path: "/app/data/models/tfidf/model.joblib"
+    tfidf_stats_path: "/app/data/models/tfidf/stats.json"
+    perplexity_threshold_path: "/app/data/models/tfidf/perplexity_threshold.json"
+    
+  layer2:
+    enabled: true
+    distilbert_model_path: "/app/models/distilbert"
+    deberta_model_path: "/app/models/deberta_detector"
+    
+  layer3:
+    enabled: true
+    mistral_api_key: "${MISTRAL_API_KEY}"
+    groq_api_key: "${GROQ_API_KEY}"
+    fallback_to_groq: true
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_path: "/app/logs/app.log"
+
+voting:
+  threshold: 2  # 2 out of 3 layers must agree to pass
+  fail_safe: true  # Block if tie

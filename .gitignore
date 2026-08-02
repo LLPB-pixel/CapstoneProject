@@ -79,7 +79,6 @@ logs/
 Thumbs.db
 
 # Project specific - keep datasets but ignore temporary
-Data/
 wandb/
 
 # Local configuration
@@ -94,7 +93,10 @@ wandb/
 # Models directory (can be large)
 /models/
 
-# Large data files (use git lfs if needed)
+# Data files (use git lfs if needed)
+data/models/
+data/processed/
+data/raw/
 *.csv
 *.json
 *.jsonl
@@ -104,12 +106,15 @@ wandb/
 *.h5
 *.pt
 *.safetensors
+*.joblib
 
 # Jupyter notebooks
 *.ipynb
 .ipynb_checkpoints/
 
-#word documents
-
+# Documents
 *.pdf
-academic_documentation.md
+*.docx
+
+# GPT2 cache
+gpt2_local_cache/

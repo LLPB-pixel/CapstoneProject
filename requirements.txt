@@ -1,0 +1,42 @@
+# Prompt Guard - Dependencias Principales
+# Instalar con: pip install -r requirements.txt
+
+# API Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# LLM y Model Inference
+mistralai>=2.7.0
+requests>=2.31.0
+httpx>=0.28.0
+
+# Deep Learning
+torch>=2.1.0
+transformers>=4.38.0
+accelerate>=1.14.0
+
+# Data processing
+pandas>=2.1.0
+numpy>=1.26.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Security / Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Pydantic
+pydantic>=2.5.0
+pydantic-core>=2.46.4
+
+# Database
+sqlalchemy>=2.0.23
+
+# Logging and utilities
+python-json-logger>=2.0.7
+python-dotenv>=1.0.0
+tqdm>=4.68.3
+
+# Python multipart for file uploads
+python-multipart>=0.0.6

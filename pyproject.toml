@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prompt-guard"
+version = "1.0.0"
+description = "Sistema de Seguridad para LLMs - Deteccion y bloqueo de ataques de prompt injection"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Capstone Project Samsung", email = "project@example.com"}
+]
+keywords = ["LLM", "security", "prompt-injection", "jailbreak", "detection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.5.0",
+    "torch>=2.1.0",
+    "transformers>=4.38.0",
+    "scikit-learn>=1.3.0",
+    "joblib>=1.3.0",
+    "pandas>=2.1.0",
+    "numpy>=1.26.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.23",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "wandb>=0.16.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/prompt-guard"
+Documentation = "https://github.com/example/prompt-guard#readme"
+Repository = "https://github.com/example/prompt-guard.git"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+python_files = ["tests/*.py", "tests/**/*.py"]
+testpaths = ["tests"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
